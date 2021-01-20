@@ -21,6 +21,7 @@
 #include <hash.h>
 #include <httprpc.h>
 #include <httpserver.h>
+#include <prometheus.h>
 #include <index/blockfilterindex.h>
 #include <index/txindex.h>
 #include <interfaces/chain.h>
@@ -788,7 +789,12 @@ static bool AppInitServers(const util::Ref& context, NodeContext& node)
     if (!StartHTTPRPC(context))
         return false;
     if (args.GetBoolArg("-rest", DEFAULT_REST_ENABLE)) StartREST(context);
+
     StartHTTPServer();
+    // // StartPrometheus();
+    LogPrintf("*******************    Threading StartPrometheus\n");
+    threadGroup.create_thread([&] { TraceThread("scheduler", [&] { StartPrometheus(); }); });
+    LogPrintf("*******************    Finished AppInitServers\n");
     return true;
 }
 

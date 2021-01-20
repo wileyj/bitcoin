@@ -3,7 +3,7 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 DIST_SUBDIRS = secp256k1 univalue
-
+# LIBTOOL_LDFLAGS = -lprometheus-cpp-pull -lprometheus-cpp-core -lz
 AM_LDFLAGS = $(LIBTOOL_LDFLAGS) $(HARDENED_LDFLAGS) $(GPROF_LDFLAGS) $(SANITIZER_LDFLAGS)
 AM_CXXFLAGS = $(DEBUG_CXXFLAGS) $(HARDENED_CXXFLAGS) $(WARN_CXXFLAGS) $(NOWARN_CXXFLAGS) $(ERROR_CXXFLAGS) $(GPROF_CXXFLAGS) $(SANITIZER_CXXFLAGS)
 AM_CPPFLAGS = $(DEBUG_CPPFLAGS) $(HARDENED_CPPFLAGS)
@@ -186,6 +186,7 @@ BITCOIN_CORE_H = \
   policy/settings.h \
   pow.h \
   protocol.h \
+	prometheus.h \
   psbt.h \
   random.h \
   randomenv.h \
@@ -323,6 +324,7 @@ libbitcoin_server_a_SOURCES = \
   policy/rbf.cpp \
   policy/settings.cpp \
   pow.cpp \
+	prometheus.cpp \
   rest.cpp \
   rpc/blockchain.cpp \
   rpc/mining.cpp \
