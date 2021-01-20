@@ -150,3 +150,9 @@ db4/
 osx_volname
 dist/
 *.background.tiff
+
+./build.sh
+./statsClient.txt
+./statsd.txt
+./test.sh
+
