@@ -151,8 +151,8 @@ osx_volname
 dist/
 *.background.tiff
 
-./build.sh
-./statsClient.txt
-./statsd.txt
-./test.sh
+build.sh
+statsClient.txt
+statsd.txt
+test.sh
 
