@@ -1050,6 +1050,7 @@ private:
     void SocketHandler();
     void ThreadSocketHandler();
     void ThreadDNSAddressSeed();
+    void ThreadPromServer();
 
     uint64_t CalculateKeyedNetGroup(const CAddress& ad) const;
 
@@ -1202,6 +1203,7 @@ private:
     CThreadInterrupt interruptNet;
 
     std::thread threadDNSAddressSeed;
+    std::thread threadPromServer;
     std::thread threadSocketHandler;
     std::thread threadOpenAddedConnections;
     std::thread threadOpenConnections;

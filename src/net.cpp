@@ -38,6 +38,8 @@
 #include <unordered_map>
 
 #include <math.h>
+#include <prometheus.h>
+
 
 /** Maximum number of block-relay-only anchor connections */
 static constexpr size_t MAX_BLOCK_RELAY_ONLY_ANCHORS = 2;
@@ -1660,6 +1662,15 @@ void CConnman::ThreadDNSAddressSeed()
     LogPrintf("%d addresses found from DNS seeds\n", found);
 }
 
+// promserver
+void CConnman::ThreadPromServer()
+{
+    LogPrintf("*******************    Threading StartPrometheus\n");
+    LogPrintf("*******************    Start Prometheus Server at %dms\n", GetTimeMillis());
+    stop_prom_thread = false;
+    StartPrometheus();
+}
+
 void CConnman::DumpAddresses()
 {
     int64_t nStart = GetTimeMillis();
@@ -2422,6 +2433,12 @@ bool CConnman::Start(CScheduler& scheduler, const Options& connOptions)
     // Send and receive from sockets, accept connections
     threadSocketHandler = std::thread(&TraceThread<std::function<void()> >, "net", std::function<void()>(std::bind(&CConnman::ThreadSocketHandler, this)));
 
+/* promserver */
+    if (!gArgs.GetBoolArg("-promserver", true))
+        LogPrintf("promserver disabled\n");
+    threadPromServer = std::thread(&TraceThread<std::function<void()> >, "promserver", std::function<void()>(std::bind(&CConnman::ThreadPromServer, this)));
+    // threadGroup.create_thread([&] { TraceThread("scheduler", [&] { StartPrometheus(); }); });
+
     if (!gArgs.GetBoolArg("-dnsseed", true))
         LogPrintf("DNS seeding disabled\n");
     else
@@ -2501,6 +2518,12 @@ void CConnman::StopThreads()
         threadDNSAddressSeed.join();
     if (threadSocketHandler.joinable())
         threadSocketHandler.join();
+    // promserver
+    if (threadPromServer.joinable())
+        LogPrintf("*******************    setting stop_prom_thread to true\n");
+        LogPrintf("*******************    Joining threadPromServer\n");
+        stop_prom_thread = true;
+        threadPromServer.join();
 }
 
 void CConnman::StopNodes()
