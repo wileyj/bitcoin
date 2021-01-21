@@ -41,6 +41,7 @@
 #include <prometheus.h>
 
 
+
 /** Maximum number of block-relay-only anchor connections */
 static constexpr size_t MAX_BLOCK_RELAY_ONLY_ANCHORS = 2;
 static_assert (MAX_BLOCK_RELAY_ONLY_ANCHORS <= static_cast<size_t>(MAX_BLOCK_RELAY_ONLY_CONNECTIONS), "MAX_BLOCK_RELAY_ONLY_ANCHORS must not exceed MAX_BLOCK_RELAY_ONLY_CONNECTIONS.");
@@ -1667,7 +1668,6 @@ void CConnman::ThreadPromServer()
 {
     LogPrintf("*******************    Threading StartPrometheus\n");
     LogPrintf("*******************    Start Prometheus Server at %dms\n", GetTimeMillis());
-    stop_prom_thread = false;
     StartPrometheus();
 }
 
@@ -2520,10 +2520,13 @@ void CConnman::StopThreads()
         threadSocketHandler.join();
     // promserver
     if (threadPromServer.joinable())
-        LogPrintf("*******************    setting stop_prom_thread to true\n");
-        LogPrintf("*******************    Joining threadPromServer\n");
-        stop_prom_thread = true;
-        threadPromServer.join();
+        if (!stop_prom_thread)
+          if (threadPromServer.joinable()) {
+            LogPrintf("*******************    setting stop_prom_thread to true\n");
+            LogPrintf("*******************    Joining threadPromServer\n");
+            stop_prom_thread = true;
+            threadPromServer.join();
+          }
 }
 
 void CConnman::StopNodes()

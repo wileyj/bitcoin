@@ -25,6 +25,7 @@
 #include <sys/param.h>
 #include <unistd.h>
 #include <prometheus.h>
+#include <mutex>
 
 /* push */
 // #include <prometheus/gateway.h>
@@ -34,6 +35,7 @@
 
 void StartPrometheus() {
   using namespace prometheus;
+  std::mutex mutex;
   LogPrintf("*******************    Prometheus: Starting\n");
   // int promThreads = std::max((long)gArgs.GetArg("-rpcthreads", DEFAULT_PROM_THREADS), 1L);
   LogPrintf("*******************    Prometheus: starting %d worker threads\n", 1);
@@ -53,15 +55,18 @@ void StartPrometheus() {
       {{"another_label", "value"}, {"yet_another_label", "value"}});
   // ask the exposer to scrape the registry on incoming scrapes
   exposer.RegisterCollectable(registry);
+  mutex.lock();
   for (;;) {
     LogPrintf("StopPrometheus: %d\n", stop_prom_thread);
     // LogPrintf("*******************    End of StartPrometheus Thread\n");
     if (stop_prom_thread)
       // LogPrintf("*******************    End of StartPrometheus Thread\n");
-      return;
+      break;
     LogPrintf("Sleeping for 1s\n");
     std::this_thread::sleep_for(std::chrono::seconds(1));
     // increment the counter by one (second)
     second_counter.Increment();
   }
+  mutex.unlock();
+  return;
 }
