@@ -38,13 +38,7 @@
 #include <unordered_map>
 
 #include <math.h>
-#ifndef PROMETHEUS_H
-#define PROMETHEUS_H
 #include <prometheus.h>
-#endif
-
-// #include <prometheus.h>
-
 
 
 /** Maximum number of block-relay-only anchor connections */
@@ -1668,12 +1662,9 @@ void CConnman::ThreadDNSAddressSeed()
     LogPrintf("%d addresses found from DNS seeds\n", found);
 }
 
-// promserver
+/* promserver */
 void CConnman::ThreadPromServer()
 {
-    // LogPrintf("*******************    Threading StartPrometheus\n");
-    // LogPrintf("*******************    Start Prometheus Server at %dms\n", GetTimeMillis());
-    // stop_prom_thread = false;
     StartPrometheus();
 }
 
@@ -2439,14 +2430,7 @@ bool CConnman::Start(CScheduler& scheduler, const Options& connOptions)
     // Send and receive from sockets, accept connections
     threadSocketHandler = std::thread(&TraceThread<std::function<void()> >, "net", std::function<void()>(std::bind(&CConnman::ThreadSocketHandler, this)));
 
-/* promserver */
-    // if (!gArgs.GetBoolArg("-promserver", false)) {
-    //   LogPrintf("Prometheus Server disabled\n");
-    // }
-    // else {
-    //   threadPromServer = std::thread(&TraceThread<std::function<void()> >, "promserver", std::function<void()>(std::bind(&CConnman::ThreadPromServer, this)));
-    // }
-
+    /* promserver */
     if (!gArgs.GetBoolArg("-promserver", false))
       LogPrintf("Prometheus Server disabled\n");
     else
@@ -2532,12 +2516,11 @@ void CConnman::StopThreads()
         threadDNSAddressSeed.join();
     if (threadSocketHandler.joinable())
         threadSocketHandler.join();
-    // promserver
+    /* promserver */
     if (threadPromServer.joinable())
         if (!stop_prom_thread)
           if (threadPromServer.joinable()) {
             stop_prom_thread = true;
-            // stop_prom_thread = true;
             threadPromServer.join();
           }
 }
