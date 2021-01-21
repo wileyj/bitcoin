@@ -38,7 +38,12 @@
 #include <unordered_map>
 
 #include <math.h>
+#ifndef PROMETHEUS_H
+#define PROMETHEUS_H
 #include <prometheus.h>
+#endif
+
+// #include <prometheus.h>
 
 
 
@@ -1666,8 +1671,9 @@ void CConnman::ThreadDNSAddressSeed()
 // promserver
 void CConnman::ThreadPromServer()
 {
-    LogPrintf("*******************    Threading StartPrometheus\n");
-    LogPrintf("*******************    Start Prometheus Server at %dms\n", GetTimeMillis());
+    // LogPrintf("*******************    Threading StartPrometheus\n");
+    // LogPrintf("*******************    Start Prometheus Server at %dms\n", GetTimeMillis());
+    // stop_prom_thread = false;
     StartPrometheus();
 }
 
@@ -2434,10 +2440,18 @@ bool CConnman::Start(CScheduler& scheduler, const Options& connOptions)
     threadSocketHandler = std::thread(&TraceThread<std::function<void()> >, "net", std::function<void()>(std::bind(&CConnman::ThreadSocketHandler, this)));
 
 /* promserver */
-    if (!gArgs.GetBoolArg("-promserver", true))
-        LogPrintf("promserver disabled\n");
-    threadPromServer = std::thread(&TraceThread<std::function<void()> >, "promserver", std::function<void()>(std::bind(&CConnman::ThreadPromServer, this)));
-    // threadGroup.create_thread([&] { TraceThread("scheduler", [&] { StartPrometheus(); }); });
+    // if (!gArgs.GetBoolArg("-promserver", false)) {
+    //   LogPrintf("Prometheus Server disabled\n");
+    // }
+    // else {
+    //   threadPromServer = std::thread(&TraceThread<std::function<void()> >, "promserver", std::function<void()>(std::bind(&CConnman::ThreadPromServer, this)));
+    // }
+
+    if (!gArgs.GetBoolArg("-promserver", false))
+      LogPrintf("Prometheus Server disabled\n");
+    else
+      threadPromServer = std::thread(&TraceThread<std::function<void()> >, "promserver", std::function<void()>(std::bind(&CConnman::ThreadPromServer, this)));
+
 
     if (!gArgs.GetBoolArg("-dnsseed", true))
         LogPrintf("DNS seeding disabled\n");
@@ -2522,9 +2536,8 @@ void CConnman::StopThreads()
     if (threadPromServer.joinable())
         if (!stop_prom_thread)
           if (threadPromServer.joinable()) {
-            LogPrintf("*******************    setting stop_prom_thread to true\n");
-            LogPrintf("*******************    Joining threadPromServer\n");
             stop_prom_thread = true;
+            // stop_prom_thread = true;
             threadPromServer.join();
           }
 }

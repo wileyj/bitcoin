@@ -440,7 +440,8 @@ void SetupServerArgs(NodeContext& node)
     argsman.AddArg("-discover", "Discover own IP addresses (default: 1 when listening and no -externalip or -proxy)", ArgsManager::ALLOW_ANY, OptionsCategory::CONNECTION);
     argsman.AddArg("-dns", strprintf("Allow DNS lookups for -addnode, -seednode and -connect (default: %u)", DEFAULT_NAME_LOOKUP), ArgsManager::ALLOW_ANY, OptionsCategory::CONNECTION);
     argsman.AddArg("-dnsseed", "Query for peer addresses via DNS lookup, if low on addresses (default: 1 unless -connect used)", ArgsManager::ALLOW_ANY, OptionsCategory::CONNECTION);
-    argsman.AddArg("-promserver", "Start Prometheus server on port 9153 (default: 1 unless -connect used)", ArgsManager::ALLOW_ANY, OptionsCategory::CONNECTION);
+    // argsman.AddArg("-promserver", "Start Prometheus server on port 9153 (default: 1 unless -connect used)", ArgsManager::ALLOW_ANY, OptionsCategory::CONNECTION);
+    argsman.AddArg(  "-promserver",   "Start Prometheus server on port 9153",   ArgsManager::ALLOW_ANY,   OptionsCategory::OPTIONS);
     argsman.AddArg("-externalip=<ip>", "Specify your own public address", ArgsManager::ALLOW_ANY, OptionsCategory::CONNECTION);
     argsman.AddArg("-forcednsseed", strprintf("Always query for peer addresses via DNS lookup (default: %u)", DEFAULT_FORCEDNSSEED), ArgsManager::ALLOW_ANY, OptionsCategory::CONNECTION);
     argsman.AddArg("-listen", "Accept connections from outside (default: 1 if no -proxy or -connect)", ArgsManager::ALLOW_ANY, OptionsCategory::CONNECTION);
@@ -794,9 +795,6 @@ static bool AppInitServers(const util::Ref& context, NodeContext& node)
     if (args.GetBoolArg("-rest", DEFAULT_REST_ENABLE)) StartREST(context);
 
     StartHTTPServer();
-    // promserver
-    // LogPrintf("*******************    Threading StartPrometheus\n");
-    // threadGroup.create_thread([&] { TraceThread("scheduler", [&] { StartPrometheus(); }); });
     return true;
 }
 
@@ -820,6 +818,12 @@ void InitParameterInteraction(ArgsManager& args)
             LogPrintf("%s: parameter interaction: -connect set -> setting -dnsseed=0\n", __func__);
         if (args.SoftSetBoolArg("-listen", false))
             LogPrintf("%s: parameter interaction: -connect set -> setting -listen=0\n", __func__);
+    }
+
+    // promserver
+    if (args.IsArgSet("-promserver")) {
+      if (args.SoftSetBoolArg("-promserver", false))
+          LogPrintf("%s: parameter interaction: -promserver set -> setting -promserver=0\n", __func__);
     }
 
     if (args.IsArgSet("-proxy")) {

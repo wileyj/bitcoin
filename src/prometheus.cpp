@@ -40,7 +40,7 @@ void StartPrometheus() {
   // int promThreads = std::max((long)gArgs.GetArg("-rpcthreads", DEFAULT_PROM_THREADS), 1L);
   LogPrintf("*******************    Prometheus: starting %d worker threads\n", 1);
   prometheus::Exposer exposer{"127.0.0.1:9153", DEFAULT_PROM_THREADS};
-  LogPrintf("*******************    Exposed: port 9153\n");
+  // LogPrintf("*******************    Exposed: port 9153\n");
 
   auto registry = std::make_shared<Registry>();
   // add a new counter family to the registry (families combine values with the
@@ -57,12 +57,12 @@ void StartPrometheus() {
   exposer.RegisterCollectable(registry);
   mutex.lock();
   for (;;) {
-    LogPrintf("StopPrometheus: %d\n", stop_prom_thread);
+    // LogPrintf("StopPrometheus: %d\n", stop_prom_thread);
     // LogPrintf("*******************    End of StartPrometheus Thread\n");
     if (stop_prom_thread)
       // LogPrintf("*******************    End of StartPrometheus Thread\n");
       break;
-    LogPrintf("Sleeping for 1s\n");
+    // LogPrintf("Sleeping for 1s\n");
     std::this_thread::sleep_for(std::chrono::seconds(1));
     // increment the counter by one (second)
     second_counter.Increment();
