@@ -2746,8 +2746,7 @@ void CConnman::RecordBytesRecv(uint64_t bytes)
     nTotalBytesRecv += bytes;
     // promserver
     bandwidth_bytesReceived.Increment(bytes);
-    // LogPrintf("bandwidth.bytesReceived: %d\n", bytes);
-    // LogPrintf("bandwidth.totalBytesReceived: %d\n", nTotalBytesRecv);
+    bandwidth_bytesReceivedTotal.Increment(nTotalBytesRecv);
     // statsClient.count("bandwidth.bytesReceived", bytes, 0.1f);
     // statsClient.gauge("bandwidth.totalBytesReceived", nTotalBytesRecv, 0.01f);
 }
@@ -2758,6 +2757,7 @@ void CConnman::RecordBytesSent(uint64_t bytes)
     nTotalBytesSent += bytes;
     // promserver
     bandwidth_bytesSent.Increment(bytes);
+    bandwidth_bytesSentTotal.Increment(nTotalBytesSent);
     const auto now = GetTime<std::chrono::seconds>();
     if (nMaxOutboundCycleStartTime + MAX_UPLOAD_TIMEFRAME < now)
     {
