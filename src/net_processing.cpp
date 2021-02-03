@@ -34,6 +34,7 @@
 
 #include <memory>
 #include <typeinfo>
+#include <prometheus.h>
 
 /** Expiration time for orphan transactions in seconds */
 static constexpr int64_t ORPHAN_TX_EXPIRE_TIME = 20 * 60;
@@ -1112,6 +1113,11 @@ bool AddOrphanTx(const CTransactionRef& tx, NodeId peer) EXCLUSIVE_LOCKS_REQUIRE
 
     LogPrint(BCLog::MEMPOOL, "stored orphan tx %s (mapsz %u outsz %u)\n", hash.ToString(),
              mapOrphanTransactions.size(), mapOrphanTransactionsByPrev.size());
+    // promserver
+    TransactionsOrphansAdd.Increment(1);
+    TransactionsOrphans.Increment(mapOrphanTransactions.size());
+    // statsClient.inc("transactions.orphans.add", 1.0f);
+    // statsClient.gauge("transactions.orphans", mapOrphanTransactions.size());
     return true;
 }
 
@@ -1143,6 +1149,9 @@ int static EraseOrphanTx(uint256 hash) EXCLUSIVE_LOCKS_REQUIRED(g_cs_orphans)
     g_orphans_by_wtxid.erase(it->second.tx->GetWitnessHash());
 
     mapOrphanTransactions.erase(it);
+    // promserver
+    TransactionsOrphansRemove.Increment(1);
+    TransactionsOrphans.Increment(mapOrphanTransactions.size());
     return 1;
 }
 
@@ -1212,8 +1221,14 @@ void PeerManagerImpl::Misbehaving(const NodeId pnode, const int howmuch, const s
     if (peer->m_misbehavior_score >= DISCOURAGEMENT_THRESHOLD && peer->m_misbehavior_score - howmuch < DISCOURAGEMENT_THRESHOLD) {
         LogPrint(BCLog::NET, "Misbehaving: peer=%d (%d -> %d) DISCOURAGE THRESHOLD EXCEEDED%s\n", pnode, peer->m_misbehavior_score - howmuch, peer->m_misbehavior_score, message_prefixed);
         peer->m_should_discourage = true;
+        // promserver
+        MisbehaviorBanned.Increment(1);
+        // statsClient.inc("misbehavior.banned", 1.0f);
     } else {
         LogPrint(BCLog::NET, "Misbehaving: peer=%d (%d -> %d)%s\n", pnode, peer->m_misbehavior_score - howmuch, peer->m_misbehavior_score, message_prefixed);
+        // promserver
+        MisbehaviorAmount.Increment(howmuch);
+        // statsClient.count("misbehavior.amount", howmuch, 1.0);
     }
 }
 
@@ -2466,6 +2481,11 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                                      const std::atomic<bool>& interruptMsgProc)
 {
     LogPrint(BCLog::NET, "received: %s (%u bytes) peer=%d\n", SanitizeString(msg_type), vRecv.size(), pfrom.GetId());
+    // promserver
+    auto& message_received = prometheus::BuildCounter().Name("message.received." + SanitizeString(msg_type)).Help("message.received." + SanitizeString(msg_type)).Register(*registry);
+    auto& MessageReceived = message_received.Add( {{"name", "message.received." + SanitizeString(msg_type) }} );
+    MessageReceived.Increment(1);
+    // statsClient.inc("message.received." + SanitizeString(msg_type), 1.0f);
 
     PeerRef peer = GetPeerRef(pfrom.GetId());
     if (peer == nullptr) return;
@@ -2834,6 +2854,11 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             pfrom.fGetAddr = false;
         if (pfrom.IsAddrFetchConn())
             pfrom.fDisconnect = true;
+
+        // promserver
+        PeersKnownAddresses.Increment(m_connman.GetAddressCount());
+        // statsClient.gauge("peers.knownAddresses", m_connman.GetAddressCount(), 1.0f);
+
         return;
     }
 
@@ -2873,6 +2898,9 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             }
 
             if (inv.IsMsgBlk()) {
+                // promserver
+                MessageReceivedInvBlock.Increment(1);
+                //statsClient.inc("message.received.inv_block", 1.0f);
                 const bool fAlreadyHave = AlreadyHaveBlock(inv.hash);
                 LogPrint(BCLog::NET, "got inv: %s  %s peer=%d\n", inv.ToString(), fAlreadyHave ? "have" : "new", pfrom.GetId());
 
@@ -2886,6 +2914,8 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
                     best_block = &inv.hash;
                 }
             } else if (inv.IsGenTxMsg()) {
+                // promserver
+                MessageReceivedInvTx.Increment(1);
                 const GenTxid gtxid = ToGenTxid(inv);
                 const bool fAlreadyHave = AlreadyHaveTx(gtxid, m_mempool);
                 LogPrint(BCLog::NET, "got inv: %s  %s peer=%d\n", inv.ToString(), fAlreadyHave ? "have" : "new", pfrom.GetId());

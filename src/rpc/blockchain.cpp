@@ -45,6 +45,7 @@
 #include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <prometheus.h>
 
 struct CUpdatedBlock
 {
@@ -1093,6 +1094,17 @@ static RPCHelpMan gettxoutsetinfo()
         }
         ret.pushKV("disk_size", stats.nDiskSize);
         ret.pushKV("total_amount", ValueFromAmount(stats.nTotalAmount));
+        // promserver
+        UtxosetTx.Increment(stats.nTransactions);
+        UtxosetTxOutputs.Increment(stats.nTransactionOutputs);
+        UtxosetDbSizeBytes.Increment(stats.nDiskSize);
+        UtxosetBlockHeight.Increment(stats.nHeight);
+        UtxosetTotalBTCAmount.Increment((double)stats.nTotalAmount / (double)COIN);
+        // statsClient.gauge("utxoset.tx", stats.nTransactions, 1.0f);
+        // statsClient.gauge("utxoset.txOutputs", stats.nTransactionOutputs, 1.0f);
+        // statsClient.gauge("utxoset.dbSizeBytes", stats.nDiskSize, 1.0f);
+        // statsClient.gauge("utxoset.blockHeight", stats.nHeight, 1.0f);
+        // statsClient.gauge("utxoset.totalBTCAmount", (double)stats.nTotalAmount / (double)COIN, 1.0f);
     } else {
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Unable to read UTXO set");
     }

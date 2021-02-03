@@ -4,13 +4,14 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <policy/fees.h>
-
+#include <boost/lexical_cast.hpp>
 #include <clientversion.h>
 #include <fs.h>
 #include <logging.h>
 #include <streams.h>
 #include <txmempool.h>
 #include <util/system.h>
+#include <prometheus.h>
 
 static const char* FEE_ESTIMATES_FILENAME = "fee_estimates.dat";
 
@@ -619,6 +620,20 @@ void CBlockPolicyEstimator::processBlock(unsigned int nBlockHeight,
     if (firstRecordedHeight == 0 && countedTxs > 0) {
         firstRecordedHeight = nBestSeenHeight;
         LogPrint(BCLog::ESTIMATEFEE, "Blockpolicy first recorded height %u\n", firstRecordedHeight);
+    }
+
+    // promserver
+    // emit stats for estimated fees
+    for (unsigned int i = 1; i <= 1008; i++)
+    {
+        std::string feeName = "estimates.fee.block" + boost::lexical_cast<std::string>(i);
+        CFeeRate feeEstimate = estimateSmartFee(i, NULL, true);
+        if (feeEstimate.GetFeePerK() > 0)
+            // statsClient.gauge(feeName, feeEstimate.GetFeePerK());
+            FeeName.Increment(feeEstimate.GetFeePerK());
+        else
+            FeeName.Increment(0);
+            // statsClient.gauge(feeName, 0);
     }
 
 

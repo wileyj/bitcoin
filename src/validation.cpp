@@ -51,6 +51,7 @@
 #include <string>
 
 #include <boost/algorithm/string/replace.hpp>
+#include <prometheus.h>
 
 #define MICRO 0.000001
 #define MILLI 0.001
@@ -594,6 +595,8 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
 
     // is it already in the memory pool?
     if (m_pool.exists(hash)) {
+        // promserver
+        // statsClient.inc("transactions.duplicate", 1.0f);
         return state.Invalid(TxValidationResult::TX_CONFLICT, "txn-already-in-mempool");
     }
 
@@ -915,6 +918,15 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
                         FormatMoney(::incrementalRelayFee.GetFee(nSize))));
         }
     }
+    // promserver
+    // statsClient.count("transactions.sizeBytes", nSize, 1.0f);
+    // statsClient.count("transactions.fees", nFees, 1.0f);
+    // statsClient.count("transactions.inputs", tx.vin.size(), 1.0f);
+    // statsClient.count("transactions.outputs", tx.vout.size(), 1.0f);
+    // statsClient.count("transactions.inputValue", nValueIn, 1.0f);
+    // statsClient.count("transactions.outputValue", nValueOut, 1.0f);
+    // statsClient.count("transactions.sigOps", nSigOpsCost, 1.0f);
+
     return true;
 }
 
@@ -1049,6 +1061,18 @@ bool MemPoolAccept::AcceptSingleTransaction(const CTransactionRef& ptx, ATMPArgs
     if (!Finalize(args, workspace)) return false;
 
     GetMainSignals().TransactionAddedToMempool(ptx, m_pool.GetAndIncrementSequence());
+
+    // promserver
+    // boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
+    // boost::posix_time::time_duration diff = finish - start;
+    // statsClient.timing("AcceptToMemoryPool_ms", diff.total_milliseconds(), 1.0f);
+    // statsClient.gauge("transactions.txInMemoryPool", m_pool.size(), 0.1f);
+    // statsClient.inc("transactions.accepted", 1.0f);
+    //
+    // statsClient.gauge("transactions.mempool.totalTransactions", m_pool.size(), 0.1f);
+    // statsClient.gauge("transactions.mempool.totalTxBytes", (int64_t) m_pool.GetTotalTxSize(), 0.1f);
+    // statsClient.gauge("transactions.mempool.memoryUsageBytes", (int64_t) m_pool.DynamicMemoryUsage(), 0.1f);
+    // statsClient.gauge("transactions.mempool.minFeePerKb", m_pool.GetMinFee(gArgs.GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000).GetFeePerK(), 0.1f);
 
     return true;
 }
@@ -1349,6 +1373,8 @@ static void CheckForkWarningConditions() EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 // Called both upon regular invalid block discovery *and* InvalidateBlock
 void static InvalidChainFound(CBlockIndex* pindexNew) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
+    // promserver
+    // statsClient.inc("warnings.InvalidBlockFound", 1.0f);
     if (!pindexBestInvalid || pindexNew->nChainWork > pindexBestInvalid->nChainWork)
         pindexBestInvalid = pindexNew;
     if (pindexBestHeader != nullptr && pindexBestHeader->GetAncestor(pindexNew->nHeight) == pindexNew) {
@@ -1369,6 +1395,8 @@ void static InvalidChainFound(CBlockIndex* pindexNew) EXCLUSIVE_LOCKS_REQUIRED(c
 // Same as InvalidChainFound, above, except not called directly from InvalidateBlock,
 // which does its own setBlockIndexCandidates manageent.
 void CChainState::InvalidBlockFound(CBlockIndex *pindex, const BlockValidationState &state) {
+    // promserver
+    // statsClient.inc("warnings.InvalidBlockFound", 1.0f);
     if (state.GetResult() != BlockValidationResult::BLOCK_MUTATED) {
         pindex->nStatus |= BLOCK_FAILED_VALID;
         m_blockman.m_failed_blocks.insert(pindex);
@@ -1390,6 +1418,8 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txund
         }
     }
     // add outputs
+    // promserver
+    // statsClient.gauge("transactions.txCacheSize", inputs.GetCacheSize(), 0.1f);
     AddCoins(inputs, tx, nHeight);
 }
 
@@ -1532,6 +1562,11 @@ bool CheckInputScripts(const CTransaction& tx, TxValidationState &state, const C
         // cache the result. Do so now.
         g_scriptExecutionCache.insert(hashCacheEntry);
     }
+
+    // promserver
+    // boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
+    // boost::posix_time::time_duration diff = finish - start;
+    // statsClient.timing("CheckInputs_ms", diff.total_milliseconds(), 1.0f);
 
     return true;
 }
@@ -1703,6 +1738,12 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
 
     // move best block pointer to prevout block
     view.SetBestBlock(pindex->pprev->GetBlockHash());
+
+    // promserver
+    // boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
+    // boost::posix_time::time_duration diff = finish - start;
+    // statsClient.timing("DisconnectBlock_ms", diff.total_milliseconds(), 1.0f);
+    // statsClient.gauge("transactions.txCacheSize", view.GetCacheSize(), 1.0f);
 
     return fClean ? DISCONNECT_OK : DISCONNECT_UNCLEAN;
 }
@@ -2173,6 +2214,9 @@ bool CChainState::ConnectBlock(const CBlock& block, BlockValidationState& state,
 
     assert(pindex->phashBlock);
     // add this block to the view's block chain
+    // promserver
+    // statsClient.gauge("transactions.txCacheSize", view.GetCacheSize(), 1.0f);
+
     view.SetBestBlock(pindex->GetBlockHash());
 
     int64_t nTime5 = GetTimeMicros(); nTimeIndex += nTime5 - nTime4;
@@ -2180,6 +2224,11 @@ bool CChainState::ConnectBlock(const CBlock& block, BlockValidationState& state,
 
     int64_t nTime6 = GetTimeMicros(); nTimeCallbacks += nTime6 - nTime5;
     LogPrint(BCLog::BENCH, "    - Callbacks: %.2fms [%.2fs (%.2fms/blk)]\n", MILLI * (nTime6 - nTime5), nTimeCallbacks * MICRO, nTimeCallbacks * MILLI / nBlocksTotal);
+
+    // promserver
+    // boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
+    // boost::posix_time::time_duration diff = finish - start;
+    // statsClient.timing("ConnectBlock_ms", diff.total_milliseconds(), 1.0f);
 
     return true;
 }
@@ -2584,6 +2633,11 @@ bool CChainState::ConnectTip(BlockValidationState& state, const CChainParams& ch
     LogPrint(BCLog::BENCH, "  - Connect postprocess: %.2fms [%.2fs (%.2fms/blk)]\n", (nTime6 - nTime5) * MILLI, nTimePostConnect * MICRO, nTimePostConnect * MILLI / nBlocksTotal);
     LogPrint(BCLog::BENCH, "- Connect block: %.2fms [%.2fs (%.2fms/blk)]\n", (nTime6 - nTime1) * MILLI, nTimeTotal * MICRO, nTimeTotal * MILLI / nBlocksTotal);
 
+    // promserver
+    // boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
+    // boost::posix_time::time_duration diff = finish - start;
+    // statsClient.timing("ConnectTip_ms", diff.total_milliseconds(), 1.0f);
+
     connectTrace.BlockConnected(pindexNew, std::move(pthisBlock));
     return true;
 }
@@ -2876,6 +2930,11 @@ bool CChainState::ActivateBestChain(BlockValidationState &state, const CChainPar
         if (ShutdownRequested()) break;
     } while (pindexNewTip != pindexMostWork);
     CheckBlockIndex(chainparams.GetConsensus());
+
+    // promserver
+    // boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
+    // boost::posix_time::time_duration diff = finish - start;
+    // statsClient.timing("ActivateBestChain_ms", diff.total_milliseconds(), 1.0f);
 
     // Write changes periodically to disk, after relay.
     if (!FlushStateToDisk(chainparams, state, FlushStateMode::PERIODIC)) {
@@ -3338,6 +3397,18 @@ bool CheckBlock(const CBlock& block, BlockValidationState& state, const Consensu
     if (fCheckPOW && fCheckMerkleRoot)
         block.fChecked = true;
 
+    // promserver
+    // boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
+    // boost::posix_time::time_duration diff = finish - start;
+    // statsClient.timing("CheckBlock_us", diff.total_microseconds(), 1.0f);
+    // statsClient.gauge("blocks.currentSizeBytes", ::GetSerializeSize(block, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS), 1.0f);
+    // statsClient.gauge("blocks.currentSizeWithWitnessBytes", ::GetSerializeSize(block, PROTOCOL_VERSION), 1.0f);
+    // statsClient.gauge("blocks.currentWeight", ::GetBlockWeight(block), 1.0f);
+    // statsClient.gauge("blocks.currentHeight", ::ChainActive().Height(), 1.0f);
+    // statsClient.gauge("blocks.currentVersion", block.nVersion, 1.0f);
+    // statsClient.gauge("blocks.currentNumTransactions", block.vtx.size(), 1.0f);
+    // statsClient.gauge("blocks.currentSigOps", nSigOps, 1.0f);
+
     return true;
 }
 
@@ -3756,6 +3827,11 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, Block
     FlushStateToDisk(chainparams, state, FlushStateMode::NONE);
 
     CheckBlockIndex(chainparams.GetConsensus());
+
+    // promserver
+    // boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
+    // boost::posix_time::time_duration diff = finish - start;
+    // statsClient.timing("AcceptBlock_us", diff.total_microseconds(), 1.0f);
 
     return true;
 }

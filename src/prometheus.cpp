@@ -50,8 +50,8 @@ void StartPrometheus() {
   //     {{"name", "bytesReceived"}});
   // auto& bandwidth_bytesSent = bandwidth_counter.Add(
   //     {{"name", "bytesSent"}});
-  bandwidth_bytesSent.Increment(13);
-  bandwidth_bytesReceived.Increment(18);
+  // bandwidth_bytesSent.Increment(13);
+  // bandwidth_bytesReceived.Increment(18);
 
   // ask the exposer to scrape the registry on incoming scrapes
   exposer.RegisterCollectable(registry);

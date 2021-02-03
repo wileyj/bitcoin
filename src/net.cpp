@@ -476,7 +476,9 @@ CNode* CConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCo
     CAddress addr_bind = GetBindAddress(hSocket);
     CNode* pnode = new CNode(id, nLocalServices, hSocket, addrConnect, CalculateKeyedNetGroup(addrConnect), nonce, addr_bind, pszDest ? pszDest : "", conn_type);
     pnode->AddRef();
-
+    //promserver
+    //    statsClient.inc("peers.connect", 1.0f);
+    PeersConnect.Increment(1);
     // We're making a new connection, harvest entropy from the time (and our peer count)
     RandAddEvent((uint32_t)id);
 
@@ -489,6 +491,8 @@ void CNode::CloseSocketDisconnect()
     LOCK(cs_hSocket);
     if (hSocket != INVALID_SOCKET)
     {
+        //promserver
+        PeersDisconnect.Increment(1);
         LogPrint(BCLog::NET, "disconnecting peer=%d\n", id);
         CloseSocket(hSocket);
     }
@@ -656,6 +660,11 @@ bool CNode::ReceiveMsgBytes(Span<const uint8_t> msg_bytes, bool& complete)
                 i = mapRecvBytesPerMsgCmd.find(NET_MESSAGE_COMMAND_OTHER);
             assert(i != mapRecvBytesPerMsgCmd.end());
             i->second += result->m_raw_message_size;
+            //promserver
+            auto& message_bandwidth = prometheus::BuildCounter().Name("bandwidth.message." + std::string(result->m_command) + ".bytesReceived").Help("bandwidth.message." + std::string(result->m_command) + ".bytesReceived").Register(*registry);
+            auto& MessageBandwidth = message_bandwidth.Add( {{"name", "bandwidth.message." + std::string(result->m_command) + ".bytesReceived"}} );
+            MessageBandwidth.Increment(1);
+            // statsClient.count("bandwidth.message." + std::string(result->m_command) + ".bytesReceived", result->m_raw_message_size, 1.0f);
 
             // push the message to the process queue,
             vRecvMsg.push_back(std::move(*result));
@@ -1215,8 +1224,68 @@ void CConnman::NotifyNumConnectionsChanged()
         nPrevNodeCount = vNodesSize;
         if(clientInterface)
             clientInterface->NotifyNumConnectionsChanged(vNodesSize);
+        //promserver
+        // count various node attributes
+        int fullNodes = 0;
+        int spvNodes = 0;
+        int inboundNodes = 0;
+        int outboundNodes = 0;
+        int ipv4Nodes = 0;
+        int ipv6Nodes = 0;
+        int torNodes = 0;
+        mapMsgCmdSize mapRecvBytesMsgStats;
+        mapMsgCmdSize mapSentBytesMsgStats;
+        for (const std::string &msg : getAllNetMessageTypes())
+        {
+            mapRecvBytesMsgStats[msg] = 0;
+            mapSentBytesMsgStats[msg] = 0;
+        }
+        mapRecvBytesMsgStats[NET_MESSAGE_COMMAND_OTHER] = 0;
+        mapSentBytesMsgStats[NET_MESSAGE_COMMAND_OTHER] = 0;
+        for (CNode* pnode : vNodes)
+        {
+            for (const mapMsgCmdSize::value_type &i : pnode->mapRecvBytesPerMsgCmd)
+                mapRecvBytesMsgStats[i.first] += i.second;
+            for (const mapMsgCmdSize::value_type &i : pnode->mapSendBytesPerMsgCmd)
+                mapSentBytesMsgStats[i.first] += i.second;
+            if(pnode->fClient)
+                spvNodes++;
+            else
+                fullNodes++;
+            if(pnode->IsInboundConn())
+                inboundNodes++;
+            else
+                outboundNodes++;
+            if(pnode->addr.IsIPv4())
+                ipv4Nodes++;
+            if(pnode->addr.IsIPv6())
+                ipv6Nodes++;
+            if(pnode->addr.IsTor())
+                torNodes++;
+            // promserver
+            // if(pnode->nPingUsecTime > 0)
+            //     statsClient.timing("peers.ping_us", pnode->nPingUsecTime, 1.0f);
+        }
+        for (const std::string &msg : getAllNetMessageTypes())
+        {
+            auto& message_bytes_received = prometheus::BuildCounter().Name("bandwidth.message." + msg + ".totalBytesReceived").Help("message_bytes_received").Register(*registry);
+            auto& message_bytes_sent = prometheus::BuildCounter().Name("bandwidth.message." + msg + ".totalBytesSent").Help("message_bytes_sent").Register(*registry);
+            auto& MessageBytesReceived = message_bytes_received.Add( {{"name", "bandwidth.message." + msg + ".totalBytesReceived" }} );
+            auto& MessageBytesSent = message_bytes_sent.Add( {{"name", "bandwidth.message." + msg + ".totalBytesSent" }} );
+            MessageBytesReceived.Increment(mapRecvBytesMsgStats[msg]);
+            MessageBytesSent.Increment(mapSentBytesMsgStats[msg]);
+        }
+        PeersTotalConnections.Increment(nPrevNodeCount);
+        PeersSpvNodeConnections.Increment(spvNodes);
+        PeersFullNodeConnections.Increment(fullNodes);
+        PeersInboundConnections.Increment(inboundNodes);
+        PeersOutboundConnections.Increment(outboundNodes);
+        PeersIpv4Connections.Increment(ipv4Nodes);
+        PeersIpv6Connections.Increment(ipv6Nodes);
+        PeersTorConnections.Increment(torNodes);
     }
 }
+
 
 void CConnman::InactivityCheck(CNode *pnode) const
 {
@@ -2581,6 +2650,11 @@ CConnman::~CConnman()
     Stop();
 }
 
+size_t CConnman::GetAddressCount() const
+{
+    return addrman.size();
+}
+
 void CConnman::SetServices(const CService &addr, ServiceFlags nServices)
 {
     addrman.SetServices(addr, nServices);
@@ -2745,10 +2819,8 @@ void CConnman::RecordBytesRecv(uint64_t bytes)
     LOCK(cs_totalBytesRecv);
     nTotalBytesRecv += bytes;
     // promserver
-    bandwidth_bytesReceived.Increment(bytes);
-    bandwidth_bytesReceivedTotal.Increment(nTotalBytesRecv);
-    // statsClient.count("bandwidth.bytesReceived", bytes, 0.1f);
-    // statsClient.gauge("bandwidth.totalBytesReceived", nTotalBytesRecv, 0.01f);
+    BandwidthBytesReceived.Increment(bytes);
+    BandwidthBytesReceivedTotal.Increment(nTotalBytesRecv);
 }
 
 void CConnman::RecordBytesSent(uint64_t bytes)
@@ -2756,8 +2828,8 @@ void CConnman::RecordBytesSent(uint64_t bytes)
     LOCK(cs_totalBytesSent);
     nTotalBytesSent += bytes;
     // promserver
-    bandwidth_bytesSent.Increment(bytes);
-    bandwidth_bytesSentTotal.Increment(nTotalBytesSent);
+    BandwidthBytesSent.Increment(bytes);
+    BandwidthBytesSentTotal.Increment(nTotalBytesSent);
     const auto now = GetTime<std::chrono::seconds>();
     if (nMaxOutboundCycleStartTime + MAX_UPLOAD_TIMEFRAME < now)
     {
@@ -2898,6 +2970,14 @@ void CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
     std::vector<unsigned char> serializedHeader;
     pnode->m_serializer->prepareForTransport(msg, serializedHeader);
     size_t nTotalSize = nMessageSize + serializedHeader.size();
+
+    // promserver
+    auto& message_bandwidth = prometheus::BuildCounter().Name("message_bandwidth").Help("message_bandwidth").Register(*registry);
+    auto& MessageBandwidth = message_bandwidth.Add( {{"name", "bandwidth.message." + SanitizeString(msg.m_type.c_str()) + ".bytesSent"}} );
+    MessageBandwidth.Increment(nTotalSize);
+    auto& message_sent = prometheus::BuildCounter().Name("message_sent").Help("message_sent").Register(*registry);
+    auto& MessageSent = message_sent.Add( {{"name", "message.sent." + SanitizeString(msg.m_type.c_str())}} );
+    MessageSent.Increment(1);
 
     size_t nBytesSent = 0;
     {

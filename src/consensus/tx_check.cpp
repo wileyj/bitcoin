@@ -6,6 +6,7 @@
 
 #include <primitives/transaction.h>
 #include <consensus/validation.h>
+#include <boost/thread.hpp>
 
 bool CheckTransaction(const CTransaction& tx, TxValidationState& state)
 {
@@ -54,5 +55,9 @@ bool CheckTransaction(const CTransaction& tx, TxValidationState& state)
                 return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-txns-prevout-null");
     }
 
+    // promserver
+    // boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
+    // boost::posix_time::time_duration diff = finish - start;
+    // txstatsClient2.timing("CheckTransaction_us", diff.total_microseconds(), 1.0f);
     return true;
 }
