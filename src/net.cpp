@@ -661,10 +661,9 @@ bool CNode::ReceiveMsgBytes(Span<const uint8_t> msg_bytes, bool& complete)
             assert(i != mapRecvBytesPerMsgCmd.end());
             i->second += result->m_raw_message_size;
             //promserver
-            auto& message_bandwidth = prometheus::BuildCounter().Name("bandwidth.message." + std::string(result->m_command) + ".bytesReceived").Help("bandwidth.message." + std::string(result->m_command) + ".bytesReceived").Register(*registry);
-            auto& MessageBandwidth = message_bandwidth.Add( {{"name", "bandwidth.message." + std::string(result->m_command) + ".bytesReceived"}} );
+            auto& message_bandwidth = prometheus::BuildCounter().Name("bandwidth_message_" + std::string(result->m_command) + "_bytesReceived").Help("bandwidth_message_" + std::string(result->m_command) + "_bytesReceived").Register(*registry);
+            auto& MessageBandwidth = message_bandwidth.Add( {{"name", std::string(result->m_command) + "_bytesReceived"}} );
             MessageBandwidth.Increment(1);
-            // statsClient.count("bandwidth.message." + std::string(result->m_command) + ".bytesReceived", result->m_raw_message_size, 1.0f);
 
             // push the message to the process queue,
             vRecvMsg.push_back(std::move(*result));
@@ -1268,10 +1267,10 @@ void CConnman::NotifyNumConnectionsChanged()
         }
         for (const std::string &msg : getAllNetMessageTypes())
         {
-            auto& message_bytes_received = prometheus::BuildCounter().Name("bandwidth.message." + msg + ".totalBytesReceived").Help("message_bytes_received").Register(*registry);
-            auto& message_bytes_sent = prometheus::BuildCounter().Name("bandwidth.message." + msg + ".totalBytesSent").Help("message_bytes_sent").Register(*registry);
-            auto& MessageBytesReceived = message_bytes_received.Add( {{"name", "bandwidth.message." + msg + ".totalBytesReceived" }} );
-            auto& MessageBytesSent = message_bytes_sent.Add( {{"name", "bandwidth.message." + msg + ".totalBytesSent" }} );
+            auto& message_bytes_received = prometheus::BuildCounter().Name("bandwidth_message_" + msg + "_totalBytesReceived").Help("message_bytes_received").Register(*registry);
+            auto& message_bytes_sent = prometheus::BuildCounter().Name("bandwidth_message_" + msg + "_totalBytesSent").Help("message_bytes_sent").Register(*registry);
+            auto& MessageBytesReceived = message_bytes_received.Add( {{"name", "bandwidth_message_" + msg + "_totalBytesReceived" }} );
+            auto& MessageBytesSent = message_bytes_sent.Add( {{"name", "bandwidth_message_" + msg + "_totalBytesSent" }} );
             MessageBytesReceived.Increment(mapRecvBytesMsgStats[msg]);
             MessageBytesSent.Increment(mapSentBytesMsgStats[msg]);
         }
@@ -2973,10 +2972,10 @@ void CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
 
     // promserver
     auto& message_bandwidth = prometheus::BuildCounter().Name("message_bandwidth").Help("message_bandwidth").Register(*registry);
-    auto& MessageBandwidth = message_bandwidth.Add( {{"name", "bandwidth.message." + SanitizeString(msg.m_type.c_str()) + ".bytesSent"}} );
+    auto& MessageBandwidth = message_bandwidth.Add( {{"name", SanitizeString(msg.m_type.c_str()) + "_bytesSent"}} );
     MessageBandwidth.Increment(nTotalSize);
     auto& message_sent = prometheus::BuildCounter().Name("message_sent").Help("message_sent").Register(*registry);
-    auto& MessageSent = message_sent.Add( {{"name", "message.sent." + SanitizeString(msg.m_type.c_str())}} );
+    auto& MessageSent = message_sent.Add( {{"name", SanitizeString(msg.m_type.c_str())}} );
     MessageSent.Increment(1);
 
     size_t nBytesSent = 0;

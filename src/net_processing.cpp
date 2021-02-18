@@ -2482,10 +2482,9 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
 {
     LogPrint(BCLog::NET, "received: %s (%u bytes) peer=%d\n", SanitizeString(msg_type), vRecv.size(), pfrom.GetId());
     // promserver
-    auto& message_received = prometheus::BuildCounter().Name("message.received." + SanitizeString(msg_type)).Help("message.received." + SanitizeString(msg_type)).Register(*registry);
-    auto& MessageReceived = message_received.Add( {{"name", "message.received." + SanitizeString(msg_type) }} );
+    auto& message_received = prometheus::BuildCounter().Name("message_received_" + SanitizeString(msg_type)).Help("message_received_" + SanitizeString(msg_type)).Register(*registry);
+    auto& MessageReceived = message_received.Add( {{"name", SanitizeString(msg_type) }} );
     MessageReceived.Increment(1);
-    // statsClient.inc("message.received." + SanitizeString(msg_type), 1.0f);
 
     PeerRef peer = GetPeerRef(pfrom.GetId());
     if (peer == nullptr) return;
@@ -2900,7 +2899,6 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             if (inv.IsMsgBlk()) {
                 // promserver
                 MessageReceivedInvBlock.Increment(1);
-                //statsClient.inc("message.received.inv_block", 1.0f);
                 const bool fAlreadyHave = AlreadyHaveBlock(inv.hash);
                 LogPrint(BCLog::NET, "got inv: %s  %s peer=%d\n", inv.ToString(), fAlreadyHave ? "have" : "new", pfrom.GetId());
 
