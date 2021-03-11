@@ -432,8 +432,10 @@ static RPCHelpMan getmininginfo()
     obj.pushKV("chain",            Params().NetworkIDString());
     obj.pushKV("warnings",         GetWarnings(false).original);
     // promserver
-    NetworkExahashesPerSecond.Increment(getnetworkhashps().HandleRequest(request).get_real() / 1e18);
-    NetworkDifficulty.Increment((double)GetDifficulty(::ChainActive().Tip()));
+    NetworkExahashesPerSecond.Set(getnetworkhashps().HandleRequest(request).get_real() / 1e18);
+    // LogPrintf("PROM %s::%d : NetworkExahashesPerSecond SET -> (%s)\n", __FILE__, __LINE__, getnetworkhashps().HandleRequest(request).get_real() / 1e18);
+    NetworkDifficulty.Set((double)GetDifficulty(::ChainActive().Tip()));
+    // LogPrintf("PROM %s::%d : NetworkDifficulty SET -> (%s)\n", __FILE__, __LINE__, (double)GetDifficulty(::ChainActive().Tip()));
 
     return obj;
 },

@@ -477,8 +477,8 @@ CNode* CConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCo
     CNode* pnode = new CNode(id, nLocalServices, hSocket, addrConnect, CalculateKeyedNetGroup(addrConnect), nonce, addr_bind, pszDest ? pszDest : "", conn_type);
     pnode->AddRef();
     //promserver
-    //    statsClient.inc("peers.connect", 1.0f);
-    PeersConnect.Increment(1);
+    PeersConnect.Increment();
+    // LogPrintf("PROM %s::%d : PeersConnect INC -> (%s)\n", __FILE__, __LINE__, 1);
     // We're making a new connection, harvest entropy from the time (and our peer count)
     RandAddEvent((uint32_t)id);
 
@@ -492,7 +492,8 @@ void CNode::CloseSocketDisconnect()
     if (hSocket != INVALID_SOCKET)
     {
         //promserver
-        PeersDisconnect.Increment(1);
+        PeersDisconnect.Increment();
+        // LogPrintf("PROM %s::%d : PeersDisconnect INC -> (%s)\n", __FILE__, __LINE__, 1);
         LogPrint(BCLog::NET, "disconnecting peer=%d\n", id);
         CloseSocket(hSocket);
     }
@@ -661,9 +662,9 @@ bool CNode::ReceiveMsgBytes(Span<const uint8_t> msg_bytes, bool& complete)
             assert(i != mapRecvBytesPerMsgCmd.end());
             i->second += result->m_raw_message_size;
             //promserver
-            auto& message_bandwidth = prometheus::BuildCounter().Name("bandwidth_message_" + std::string(result->m_command) + "_bytesReceived").Help("bandwidth_message_" + std::string(result->m_command) + "_bytesReceived").Register(*registry);
-            auto& MessageBandwidth = message_bandwidth.Add( {{"name", std::string(result->m_command) + "_bytesReceived"}} );
-            MessageBandwidth.Increment(1);
+            auto& BandwidthMessageBytesReceived = bandwidth_message_bytes_received.Add( {{"name", std::string(result->m_command)}} );
+            BandwidthMessageBytesReceived.Increment(result->m_raw_message_size);
+            // LogPrintf("PROM %s::%d : BandwidthMessageBytesReceived INC -> (%s)\n", __FILE__, __LINE__, result->m_raw_message_size);
 
             // push the message to the process queue,
             vRecvMsg.push_back(std::move(*result));
@@ -1223,7 +1224,6 @@ void CConnman::NotifyNumConnectionsChanged()
         nPrevNodeCount = vNodesSize;
         if(clientInterface)
             clientInterface->NotifyNumConnectionsChanged(vNodesSize);
-        //promserver
         // count various node attributes
         int fullNodes = 0;
         int spvNodes = 0;
@@ -1262,26 +1262,39 @@ void CConnman::NotifyNumConnectionsChanged()
             if(pnode->addr.IsTor())
                 torNodes++;
             // promserver
-            // if(pnode->nPingUsecTime > 0)
-            //     statsClient.timing("peers.ping_us", pnode->nPingUsecTime, 1.0f);
+            if(pnode->nPingUsecTime > 0)
+                PeersPingUs.Set(pnode->nPingUsecTime);
+                // LogPrintf("PROM %s::%d : PeersPingUs SET -> (%s)\n", __FILE__, __LINE__, pnode->nPingUsecTime);
+
         }
         for (const std::string &msg : getAllNetMessageTypes())
         {
-            auto& message_bytes_received = prometheus::BuildCounter().Name("bandwidth_message_" + msg + "_totalBytesReceived").Help("message_bytes_received").Register(*registry);
-            auto& message_bytes_sent = prometheus::BuildCounter().Name("bandwidth_message_" + msg + "_totalBytesSent").Help("message_bytes_sent").Register(*registry);
-            auto& MessageBytesReceived = message_bytes_received.Add( {{"name", "bandwidth_message_" + msg + "_totalBytesReceived" }} );
-            auto& MessageBytesSent = message_bytes_sent.Add( {{"name", "bandwidth_message_" + msg + "_totalBytesSent" }} );
-            MessageBytesReceived.Increment(mapRecvBytesMsgStats[msg]);
-            MessageBytesSent.Increment(mapSentBytesMsgStats[msg]);
+            // promserver
+            auto& BandwidthMessageBytesReceivedTotal = bandwidth_message_bytes_received_total.Add( {{"name", msg}} );
+            auto& BandwidthMessageBytesSentTotal = bandwidth_message_bytes_sent_total.Add( {{"name", msg}} );
+            BandwidthMessageBytesReceivedTotal.Increment(mapRecvBytesMsgStats[msg]);
+            // LogPrintf("PROM %s::%d : BandwidthMessageBytesReceivedTotal INC -> (%s)\n", __FILE__, __LINE__, mapRecvBytesMsgStats[msg]);
+            BandwidthMessageBytesSentTotal.Increment(mapSentBytesMsgStats[msg]);
+            // LogPrintf("PROM %s::%d : BandwidthMessageBytesSentTotal INC -> (%s)\n", __FILE__, __LINE__, mapSentBytesMsgStats[msg]);
+
         }
-        PeersTotalConnections.Increment(nPrevNodeCount);
-        PeersSpvNodeConnections.Increment(spvNodes);
-        PeersFullNodeConnections.Increment(fullNodes);
-        PeersInboundConnections.Increment(inboundNodes);
-        PeersOutboundConnections.Increment(outboundNodes);
-        PeersIpv4Connections.Increment(ipv4Nodes);
-        PeersIpv6Connections.Increment(ipv6Nodes);
-        PeersTorConnections.Increment(torNodes);
+        // promserver
+        PeersTotalConnections.Set(nPrevNodeCount);
+        // LogPrintf("PROM %s::%d : PeersTotalConnections SET -> (%s)\n", __FILE__, __LINE__, nPrevNodeCount);
+        PeersSpvNodeConnections.Set(spvNodes);
+        // LogPrintf("PROM %s::%d : PeersSpvNodeConnections SET -> (%s)\n", __FILE__, __LINE__, spvNodes);
+        PeersFullNodeConnections.Set(fullNodes);
+        // LogPrintf("PROM %s::%d : PeersFullNodeConnections SET -> (%s)\n", __FILE__, __LINE__, fullNodes);
+        PeersInboundConnections.Set(inboundNodes);
+        // LogPrintf("PROM %s::%d : PeersInboundConnections SET -> (%s)\n", __FILE__, __LINE__, inboundNodes);
+        PeersOutboundConnections.Set(outboundNodes);
+        // LogPrintf("PROM %s::%d : PeersOutboundConnections SET -> (%s)\n", __FILE__, __LINE__, outboundNodes);
+        PeersIpv4Connections.Set(ipv4Nodes);
+        // LogPrintf("PROM %s::%d : PeersIpv4Connections SET -> (%s)\n", __FILE__, __LINE__, ipv4Nodes);
+        PeersIpv6Connections.Set(ipv6Nodes);
+        // LogPrintf("PROM %s::%d : PeersIpv6Connections SET -> (%s)\n", __FILE__, __LINE__, ipv6Nodes);
+        PeersTorConnections.Set(torNodes);
+        // LogPrintf("PROM %s::%d : PeersTorConnections SET -> (%s)\n", __FILE__, __LINE__, torNodes);
     }
 }
 
@@ -2818,8 +2831,10 @@ void CConnman::RecordBytesRecv(uint64_t bytes)
     LOCK(cs_totalBytesRecv);
     nTotalBytesRecv += bytes;
     // promserver
-    BandwidthBytesReceived.Increment(bytes);
+    BandwidthBytesReceived.Set(bytes);
+    // LogPrintf("PROM %s::%d : BandwidthBytesReceived SET -> (%s)\n", __FILE__, __LINE__, bytes);
     BandwidthBytesReceivedTotal.Increment(nTotalBytesRecv);
+    // LogPrintf("PROM %s::%d : BandwidthBytesReceivedTotal INC -> (%s)\n", __FILE__, __LINE__, nTotalBytesRecv);
 }
 
 void CConnman::RecordBytesSent(uint64_t bytes)
@@ -2827,8 +2842,11 @@ void CConnman::RecordBytesSent(uint64_t bytes)
     LOCK(cs_totalBytesSent);
     nTotalBytesSent += bytes;
     // promserver
-    BandwidthBytesSent.Increment(bytes);
+    BandwidthBytesSent.Set(bytes);
+    // LogPrintf("PROM %s::%d : BandwidthBytesSent SET -> (%s)\n", __FILE__, __LINE__, bytes);
     BandwidthBytesSentTotal.Increment(nTotalBytesSent);
+    // LogPrintf("PROM %s::%d : BandwidthBytesSentTotal INC -> (%s)\n", __FILE__, __LINE__, nTotalBytesSent);
+
     const auto now = GetTime<std::chrono::seconds>();
     if (nMaxOutboundCycleStartTime + MAX_UPLOAD_TIMEFRAME < now)
     {
@@ -2971,12 +2989,12 @@ void CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
     size_t nTotalSize = nMessageSize + serializedHeader.size();
 
     // promserver
-    auto& message_bandwidth = prometheus::BuildCounter().Name("message_bandwidth").Help("message_bandwidth").Register(*registry);
-    auto& MessageBandwidth = message_bandwidth.Add( {{"name", SanitizeString(msg.m_type.c_str()) + "_bytesSent"}} );
-    MessageBandwidth.Increment(nTotalSize);
-    auto& message_sent = prometheus::BuildCounter().Name("message_sent").Help("message_sent").Register(*registry);
+    auto& BandwidthMessageBytesSent = bandwidth_message_bytes_sent.Add( {{"name", SanitizeString(msg.m_type.c_str())}} );
+    BandwidthMessageBytesSent.Increment(nTotalSize);
+    // LogPrintf("PROM %s::%d : BandwidthMessageBytesSent INC (%s) -> (%s)\n", __FILE__, __LINE__, SanitizeString(msg.m_type.c_str()), 1);
     auto& MessageSent = message_sent.Add( {{"name", SanitizeString(msg.m_type.c_str())}} );
-    MessageSent.Increment(1);
+    MessageSent.Increment();
+    // LogPrintf("PROM %s::%d : MessageSent INC (%s) -> (%s)\n", __FILE__, __LINE__, SanitizeString(msg.m_type.c_str()), 1);
 
     size_t nBytesSent = 0;
     {

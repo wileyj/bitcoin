@@ -596,7 +596,8 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
     // is it already in the memory pool?
     if (m_pool.exists(hash)) {
         // promserver
-        // statsClient.inc("transactions.duplicate", 1.0f);
+        TransactionsDuplicate.Increment();
+        // LogPrintf("PROM %s::%d : TransactionsDuplicate INC -> (%s)\n", __FILE__, __LINE__, 1);
         return state.Invalid(TxValidationResult::TX_CONFLICT, "txn-already-in-mempool");
     }
 
@@ -665,6 +666,13 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
 
     // Bring the best block into scope
     m_view.GetBestBlock();
+    CAmount nValueIn = 0;
+    for (unsigned int i = 0; i < tx.vin.size(); ++i) {
+        const COutPoint &prevout = tx.vin[i].prevout;
+        const Coin& coin = coins_cache.AccessCoin(prevout);
+        nValueIn += coin.out.nValue;
+    }
+    CAmount nValueOut = tx.GetValueOut();
 
     // we have all inputs cached now, so switch back to dummy (to protect
     // against bugs where we pull more inputs from disk that miss being added
@@ -919,14 +927,20 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
         }
     }
     // promserver
-    // statsClient.count("transactions.sizeBytes", nSize, 1.0f);
-    // statsClient.count("transactions.fees", nFees, 1.0f);
-    // statsClient.count("transactions.inputs", tx.vin.size(), 1.0f);
-    // statsClient.count("transactions.outputs", tx.vout.size(), 1.0f);
-    // statsClient.count("transactions.inputValue", nValueIn, 1.0f);
-    // statsClient.count("transactions.outputValue", nValueOut, 1.0f);
-    // statsClient.count("transactions.sigOps", nSigOpsCost, 1.0f);
-
+    TransactionsSizeBytes.Increment(nSize);
+    // LogPrintf("PROM %s::%d : TransactionsSizeBytes INC -> (%s)\n", __FILE__, __LINE__, nSize);
+    TransactionsFees.Increment(nFees);
+    // LogPrintf("PROM %s::%d : TransactionsFees INC -> (%s)\n", __FILE__, __LINE__, nFees);    
+    TransactionsInputs.Increment(tx.vin.size());
+    // LogPrintf("PROM %s::%d : TransactionsInputs INC -> (%s)\n", __FILE__, __LINE__, tx.vin.size());
+    TransactionsOutputs.Increment(tx.vout.size());
+    // LogPrintf("PROM %s::%d : TransactionsOutputs INC -> (%s)\n", __FILE__, __LINE__, tx.vout.size());
+    TransactionsInputValue.Increment(nValueIn);
+    // LogPrintf("PROM %s::%d : TransactionsInputValue INC -> (%s)\n", __FILE__, __LINE__, nValueIn);
+    TransactionsOutputValue.Increment(nValueOut);
+    // LogPrintf("PROM %s::%d : TransactionsOutputValue INC -> (%s)\n", __FILE__, __LINE__, nValueOut);
+    TransactionsSigOps.Increment(nSigOpsCost);
+    // LogPrintf("PROM %s::%d : TransactionsSigOps INC -> (%s)\n", __FILE__, __LINE__, nSigOpsCost);
     return true;
 }
 
@@ -1038,6 +1052,7 @@ bool MemPoolAccept::Finalize(ATMPArgs& args, Workspace& ws)
 
 bool MemPoolAccept::AcceptSingleTransaction(const CTransactionRef& ptx, ATMPArgs& args)
 {
+    boost::posix_time::ptime start = boost::posix_time::microsec_clock::local_time();
     AssertLockHeld(cs_main);
     LOCK(m_pool.cs); // mempool "read lock" (held through GetMainSignals().TransactionAddedToMempool())
 
@@ -1063,16 +1078,22 @@ bool MemPoolAccept::AcceptSingleTransaction(const CTransactionRef& ptx, ATMPArgs
     GetMainSignals().TransactionAddedToMempool(ptx, m_pool.GetAndIncrementSequence());
 
     // promserver
-    // boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
-    // boost::posix_time::time_duration diff = finish - start;
-    // statsClient.timing("AcceptToMemoryPool_ms", diff.total_milliseconds(), 1.0f);
-    // statsClient.gauge("transactions.txInMemoryPool", m_pool.size(), 0.1f);
-    // statsClient.inc("transactions.accepted", 1.0f);
-    //
-    // statsClient.gauge("transactions.mempool.totalTransactions", m_pool.size(), 0.1f);
-    // statsClient.gauge("transactions.mempool.totalTxBytes", (int64_t) m_pool.GetTotalTxSize(), 0.1f);
-    // statsClient.gauge("transactions.mempool.memoryUsageBytes", (int64_t) m_pool.DynamicMemoryUsage(), 0.1f);
-    // statsClient.gauge("transactions.mempool.minFeePerKb", m_pool.GetMinFee(gArgs.GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000).GetFeePerK(), 0.1f);
+    boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
+    boost::posix_time::time_duration diff = finish - start;
+    AcceptToMemoryPoolMs.Set(diff.total_milliseconds());
+    // LogPrintf("PROM %s::%d : AcceptToMemoryPoolMs SET -> (%s)\n", __FILE__, __LINE__, diff.total_milliseconds());
+    TransactionsTxInMemoryPool.Set(m_pool.size());
+    // LogPrintf("PROM %s::%d : TransactionsTxInMemoryPool SET -> (%s)\n", __FILE__, __LINE__, m_pool.size());
+    TransactionsAccepted.Increment();
+    // LogPrintf("PROM %s::%d : TransactionsAccepted INC -> (%s)\n", __FILE__, __LINE__, 1);
+    TransactionsMempoolTotalTransactions.Set(m_pool.size());
+    // LogPrintf("PROM %s::%d : TransactionsMempoolTotalTransactions SET -> (%s)\n", __FILE__, __LINE__, m_pool.size());
+    TransactionsMempoolTotalTXBytes.Set((int64_t) m_pool.GetTotalTxSize());
+    // LogPrintf("PROM %s::%d : TransactionsMempoolTotalTXBytes SET -> (%s)\n", __FILE__, __LINE__, (int64_t) m_pool.GetTotalTxSize());
+    TransactionsMempoolMemoryUsageBytes.Set((int64_t) m_pool.DynamicMemoryUsage());
+    // LogPrintf("PROM %s::%d : TransactionsMempoolMemoryUsageBytes SET -> (%s)\n", __FILE__, __LINE__, (int64_t) m_pool.DynamicMemoryUsage());
+    TransactionsMempoolMinFree.Set(m_pool.GetMinFee(gArgs.GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000).GetFeePerK());
+    // LogPrintf("PROM %s::%d : TransactionsMempoolMinFree SET -> (%s)\n", __FILE__, __LINE__, m_pool.GetMinFee(gArgs.GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000).GetFeePerK());
 
     return true;
 }
@@ -1374,7 +1395,8 @@ static void CheckForkWarningConditions() EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 void static InvalidChainFound(CBlockIndex* pindexNew) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
     // promserver
-    // statsClient.inc("warnings.InvalidBlockFound", 1.0f);
+    WarningsInvalidBlock.Increment();
+    // LogPrintf("PROM %s::%d : WarningsInvalidBlock INC -> (%s)\n", __FILE__, __LINE__, 1);
     if (!pindexBestInvalid || pindexNew->nChainWork > pindexBestInvalid->nChainWork)
         pindexBestInvalid = pindexNew;
     if (pindexBestHeader != nullptr && pindexBestHeader->GetAncestor(pindexNew->nHeight) == pindexNew) {
@@ -1396,7 +1418,8 @@ void static InvalidChainFound(CBlockIndex* pindexNew) EXCLUSIVE_LOCKS_REQUIRED(c
 // which does its own setBlockIndexCandidates manageent.
 void CChainState::InvalidBlockFound(CBlockIndex *pindex, const BlockValidationState &state) {
     // promserver
-    // statsClient.inc("warnings.InvalidBlockFound", 1.0f);
+    WarningsInvalidBlock.Increment();
+    // LogPrintf("PROM %s::%d : WarningsInvalidBlock INC -> (%s)\n", __FILE__, __LINE__, 1);
     if (state.GetResult() != BlockValidationResult::BLOCK_MUTATED) {
         pindex->nStatus |= BLOCK_FAILED_VALID;
         m_blockman.m_failed_blocks.insert(pindex);
@@ -1419,7 +1442,8 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txund
     }
     // add outputs
     // promserver
-    // statsClient.gauge("transactions.txCacheSize", inputs.GetCacheSize(), 0.1f);
+    TransactionsTXCacheSize.Set(inputs.GetCacheSize());
+    // LogPrintf("PROM %s::%d : TransactionsTXCacheSize SET -> (%s)\n", __FILE__, __LINE__, inputs.GetCacheSize());
     AddCoins(inputs, tx, nHeight);
 }
 
@@ -1483,6 +1507,7 @@ void InitScriptExecutionCache() {
  */
 bool CheckInputScripts(const CTransaction& tx, TxValidationState &state, const CCoinsViewCache &inputs, unsigned int flags, bool cacheSigStore, bool cacheFullScriptStore, PrecomputedTransactionData& txdata, std::vector<CScriptCheck> *pvChecks) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
+    boost::posix_time::ptime start = boost::posix_time::microsec_clock::local_time();
     if (tx.IsCoinBase()) return true;
 
     if (pvChecks) {
@@ -1564,9 +1589,10 @@ bool CheckInputScripts(const CTransaction& tx, TxValidationState &state, const C
     }
 
     // promserver
-    // boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
-    // boost::posix_time::time_duration diff = finish - start;
-    // statsClient.timing("CheckInputs_ms", diff.total_milliseconds(), 1.0f);
+    boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
+    boost::posix_time::time_duration diff = finish - start;
+    CheckInputsMs.Set(diff.total_milliseconds());
+    // LogPrintf("PROM %s::%d : CheckInputsMs SET -> (%s)\n", __FILE__, __LINE__, diff.total_milliseconds());
 
     return true;
 }
@@ -1687,6 +1713,7 @@ int ApplyTxInUndo(Coin&& undo, CCoinsViewCache& view, const COutPoint& out)
  *  When FAILED is returned, view is left in an indeterminate state. */
 DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockIndex* pindex, CCoinsViewCache& view)
 {
+    boost::posix_time::ptime start = boost::posix_time::microsec_clock::local_time();
     bool fClean = true;
 
     CBlockUndo blockUndo;
@@ -1740,10 +1767,12 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
     view.SetBestBlock(pindex->pprev->GetBlockHash());
 
     // promserver
-    // boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
-    // boost::posix_time::time_duration diff = finish - start;
-    // statsClient.timing("DisconnectBlock_ms", diff.total_milliseconds(), 1.0f);
-    // statsClient.gauge("transactions.txCacheSize", view.GetCacheSize(), 1.0f);
+    boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
+    boost::posix_time::time_duration diff = finish - start;
+    DisconnectBlockMs.Set(diff.total_milliseconds());
+    // LogPrintf("PROM %s::%d : DisconnectBlockMs SET -> (%s)\n", __FILE__, __LINE__, diff.total_milliseconds());
+    TransactionsTXCacheSize.Set(view.GetCacheSize());
+    // LogPrintf("PROM %s::%d : TransactionsTXCacheSize SET -> (%s)\n", __FILE__, __LINE__, view.GetCacheSize());
 
     return fClean ? DISCONNECT_OK : DISCONNECT_UNCLEAN;
 }
@@ -1925,6 +1954,7 @@ static int64_t nBlocksTotal = 0;
 bool CChainState::ConnectBlock(const CBlock& block, BlockValidationState& state, CBlockIndex* pindex,
                   CCoinsViewCache& view, const CChainParams& chainparams, bool fJustCheck)
 {
+    boost::posix_time::ptime start = boost::posix_time::microsec_clock::local_time();
     AssertLockHeld(cs_main);
     assert(pindex);
     assert(*pindex->phashBlock == block.GetHash());
@@ -2215,8 +2245,8 @@ bool CChainState::ConnectBlock(const CBlock& block, BlockValidationState& state,
     assert(pindex->phashBlock);
     // add this block to the view's block chain
     // promserver
-    // statsClient.gauge("transactions.txCacheSize", view.GetCacheSize(), 1.0f);
-
+    TransactionsTXCacheSize.Increment(view.GetCacheSize());
+    // LogPrintf("PROM %s::%d : TransactionsTXCacheSize INC -> (%s)\n", __FILE__, __LINE__, view.GetCacheSize());
     view.SetBestBlock(pindex->GetBlockHash());
 
     int64_t nTime5 = GetTimeMicros(); nTimeIndex += nTime5 - nTime4;
@@ -2226,9 +2256,10 @@ bool CChainState::ConnectBlock(const CBlock& block, BlockValidationState& state,
     LogPrint(BCLog::BENCH, "    - Callbacks: %.2fms [%.2fs (%.2fms/blk)]\n", MILLI * (nTime6 - nTime5), nTimeCallbacks * MICRO, nTimeCallbacks * MILLI / nBlocksTotal);
 
     // promserver
-    // boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
-    // boost::posix_time::time_duration diff = finish - start;
-    // statsClient.timing("ConnectBlock_ms", diff.total_milliseconds(), 1.0f);
+    boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
+    boost::posix_time::time_duration diff = finish - start;
+    ConnectBlockMs.Set(diff.total_milliseconds());
+    // LogPrintf("PROM %s::%d : ConnectBlockMs SET -> (%s)\n", __FILE__, __LINE__, diff.total_milliseconds());
 
     return true;
 }
@@ -2465,6 +2496,8 @@ static void UpdateTip(CTxMemPool& mempool, const CBlockIndex* pindexNew, const C
       FormatISO8601DateTime(pindexNew->GetBlockTime()),
       GuessVerificationProgress(chainParams.TxData(), pindexNew), ::ChainstateActive().CoinsTip().DynamicMemoryUsage() * (1.0 / (1<<20)), ::ChainstateActive().CoinsTip().GetCacheSize(),
       !warning_messages.empty() ? strprintf(" warning='%s'", warning_messages.original) : "");
+    //promserver
+    BlockHeight.Set(pindexNew->nHeight);
 }
 
 /** Disconnect m_chain's tip.
@@ -2580,6 +2613,7 @@ public:
  */
 bool CChainState::ConnectTip(BlockValidationState& state, const CChainParams& chainparams, CBlockIndex* pindexNew, const std::shared_ptr<const CBlock>& pblock, ConnectTrace& connectTrace, DisconnectedBlockTransactions &disconnectpool)
 {
+    boost::posix_time::ptime start = boost::posix_time::microsec_clock::local_time();
     AssertLockHeld(cs_main);
     AssertLockHeld(m_mempool.cs);
 
@@ -2634,10 +2668,10 @@ bool CChainState::ConnectTip(BlockValidationState& state, const CChainParams& ch
     LogPrint(BCLog::BENCH, "- Connect block: %.2fms [%.2fs (%.2fms/blk)]\n", (nTime6 - nTime1) * MILLI, nTimeTotal * MICRO, nTimeTotal * MILLI / nBlocksTotal);
 
     // promserver
-    // boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
-    // boost::posix_time::time_duration diff = finish - start;
-    // statsClient.timing("ConnectTip_ms", diff.total_milliseconds(), 1.0f);
-
+    boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
+    boost::posix_time::time_duration diff = finish - start;
+    ConnectTipMs.Set(diff.total_milliseconds());
+    // LogPrintf("PROM %s::%d : ConnectTipMs SET -> (%s)\n", __FILE__, __LINE__, diff.total_milliseconds());
     connectTrace.BlockConnected(pindexNew, std::move(pthisBlock));
     return true;
 }
@@ -2848,6 +2882,7 @@ bool CChainState::ActivateBestChain(BlockValidationState &state, const CChainPar
     // sanely for performance or correctness!
     AssertLockNotHeld(cs_main);
 
+    boost::posix_time::ptime start = boost::posix_time::microsec_clock::local_time();
     // ABC maintains a fair degree of expensive-to-calculate internal state
     // because this function periodically releases cs_main so that it does not lock up other threads for too long
     // during large connects - and to allow for e.g. the callback queue to drain
@@ -2932,9 +2967,10 @@ bool CChainState::ActivateBestChain(BlockValidationState &state, const CChainPar
     CheckBlockIndex(chainparams.GetConsensus());
 
     // promserver
-    // boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
-    // boost::posix_time::time_duration diff = finish - start;
-    // statsClient.timing("ActivateBestChain_ms", diff.total_milliseconds(), 1.0f);
+    boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
+    boost::posix_time::time_duration diff = finish - start;
+    ActivateBestChainMs.Set(diff.total_milliseconds());
+    // LogPrintf("PROM %s::%d : ActivateBestChainMs SET -> (%s)\n", __FILE__, __LINE__, diff.total_milliseconds());
 
     // Write changes periodically to disk, after relay.
     if (!FlushStateToDisk(chainparams, state, FlushStateMode::PERIODIC)) {
@@ -3328,6 +3364,7 @@ static bool CheckBlockHeader(const CBlockHeader& block, BlockValidationState& st
 
 bool CheckBlock(const CBlock& block, BlockValidationState& state, const Consensus::Params& consensusParams, bool fCheckPOW, bool fCheckMerkleRoot)
 {
+    boost::posix_time::ptime start = boost::posix_time::microsec_clock::local_time();
     // These are checks that are independent of context.
 
     if (block.fChecked)
@@ -3398,16 +3435,24 @@ bool CheckBlock(const CBlock& block, BlockValidationState& state, const Consensu
         block.fChecked = true;
 
     // promserver
-    // boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
-    // boost::posix_time::time_duration diff = finish - start;
-    // statsClient.timing("CheckBlock_us", diff.total_microseconds(), 1.0f);
-    // statsClient.gauge("blocks.currentSizeBytes", ::GetSerializeSize(block, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS), 1.0f);
-    // statsClient.gauge("blocks.currentSizeWithWitnessBytes", ::GetSerializeSize(block, PROTOCOL_VERSION), 1.0f);
-    // statsClient.gauge("blocks.currentWeight", ::GetBlockWeight(block), 1.0f);
-    // statsClient.gauge("blocks.currentHeight", ::ChainActive().Height(), 1.0f);
-    // statsClient.gauge("blocks.currentVersion", block.nVersion, 1.0f);
-    // statsClient.gauge("blocks.currentNumTransactions", block.vtx.size(), 1.0f);
-    // statsClient.gauge("blocks.currentSigOps", nSigOps, 1.0f);
+    boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
+    boost::posix_time::time_duration diff = finish - start;
+    CheckBlockUs.Set(diff.total_microseconds());
+    // LogPrintf("PROM %s::%d : CheckBlockUs SET -> (%s)\n", __FILE__, __LINE__, diff.total_microseconds());
+    BlockVersion.Set(block.nVersion);
+    // LogPrintf("PROM %s::%d : BlockVersion SET -> (%s)\n", __FILE__, __LINE__, block.nVersion);
+    BlockNumTransactions.Set(block.vtx.size());
+    // LogPrintf("PROM %s::%d : BlockNumTransactions SET -> (%s)\n", __FILE__, __LINE__, block.vtx.size());
+    BlockSigOps.Set(nSigOps);
+    // LogPrintf("PROM %s::%d : BlockSigOps SET -> (%s)\n", __FILE__, __LINE__, nSigOps);
+    BlockSizeBytes.Set(::GetSerializeSize(block, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS));
+    // LogPrintf("PROM %s::%d : BlockSizeBytes SET -> (%s)\n", __FILE__, __LINE__, ::GetSerializeSize(block, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS));
+    BlockSizeWitnessBytes.Set(::GetSerializeSize(block, PROTOCOL_VERSION));
+    // LogPrintf("PROM %s::%d : ActivateBlockSizeWitnessBytesBestChainMs SET -> (%s)\n", __FILE__, __LINE__, ::GetSerializeSize(block, PROTOCOL_VERSION));
+    BlockWeight.Set(::GetBlockWeight(block));
+    // LogPrintf("PROM %s::%d : BlockWeight SET -> (%s)\n", __FILE__, __LINE__, ::GetBlockWeight(block));
+    // BlockHeight.Set(::ChainActive().Height());
+    // LogPrintf("PROM %s::%d : BlockHeight SET -> (%s)\n", __FILE__, __LINE__, ::ChainActive().Height());
 
     return true;
 }
@@ -3751,6 +3796,7 @@ static FlatFilePos SaveBlockToDisk(const CBlock& block, int nHeight, const CChai
 /** Store block on disk. If dbp is non-nullptr, the file is known to already reside on disk */
 bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, BlockValidationState& state, const CChainParams& chainparams, CBlockIndex** ppindex, bool fRequested, const FlatFilePos* dbp, bool* fNewBlock)
 {
+    boost::posix_time::ptime start = boost::posix_time::microsec_clock::local_time();
     const CBlock& block = *pblock;
 
     if (fNewBlock) *fNewBlock = false;
@@ -3829,9 +3875,10 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, Block
     CheckBlockIndex(chainparams.GetConsensus());
 
     // promserver
-    // boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
-    // boost::posix_time::time_duration diff = finish - start;
-    // statsClient.timing("AcceptBlock_us", diff.total_microseconds(), 1.0f);
+    boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
+    boost::posix_time::time_duration diff = finish - start;
+    ActivateBlockMs.Set(diff.total_microseconds());
+    // LogPrintf("PROM %s::%d : ActivateBlockMs SET -> (%s)\n", __FILE__, __LINE__, diff.total_microseconds());
 
     return true;
 }

@@ -39,8 +39,10 @@ void StartPrometheus() {
                              .Register(*registry);
 
   // add a counter to the metric family
-  auto& second_counter = counter_family.Add(
-      {{"another_label", "value"}, {"yet_another_label", "value"}});
+  // auto& second_counter = counter_family.Add(
+  //     {{"another_label", "value"}, {"yet_another_label", "value"}});
+
+  auto& second_counter = counter_family.Add({});
 
   // auto& bandwidth_counter = BuildCounter()
   //                            .Name("bandwidth")

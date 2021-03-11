@@ -7,9 +7,11 @@
 #include <primitives/transaction.h>
 #include <consensus/validation.h>
 #include <boost/thread.hpp>
+#include <prometheus.h>
 
 bool CheckTransaction(const CTransaction& tx, TxValidationState& state)
 {
+    boost::posix_time::ptime start = boost::posix_time::microsec_clock::local_time();
     // Basic checks that don't depend on any context
     if (tx.vin.empty())
         return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-txns-vin-empty");
@@ -56,8 +58,9 @@ bool CheckTransaction(const CTransaction& tx, TxValidationState& state)
     }
 
     // promserver
-    // boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
-    // boost::posix_time::time_duration diff = finish - start;
-    // txstatsClient2.timing("CheckTransaction_us", diff.total_microseconds(), 1.0f);
+    boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
+    boost::posix_time::time_duration diff = finish - start;
+    CheckTransactionUs.Set(diff.total_microseconds());
+    // LogPrint("PROM %s::%d : CheckTransactionUs SET -> (%s)\n", __FILE__, __LINE__, diff.total_microseconds());
     return true;
 }
