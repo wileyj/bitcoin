@@ -14,6 +14,8 @@
 static const int DEFAULT_PROM_THREADS=4;
 static const int DEFAULT_PROM_WORKQUEUE=16;
 static const int DEFAULT_PROM_SERVER_TIMEOUT=30;
+static const std::string DEFAULT_PROM_BIND="127.0.0.1:9153";
+static const int DEFAULT_PROM_SERVER=true;
 inline bool stop_prom_thread = false;
 
 
@@ -23,24 +25,78 @@ inline auto registry = std::make_shared<prometheus::Registry>();
 /* ***************************** */
 /* counters */
 /* ***************************** */
-inline auto& bandwidth_bytes_received_total = prometheus::BuildCounter().Name("bandwidth_bytes_received_total").Help("bandwidth_bytes_received_total").Register(*registry);
-inline auto& bandwidth_bytes_sent_total = prometheus::BuildCounter().Name("bandwidth_bytes_sent_total").Help("bandwidth_bytes_sent_total").Register(*registry);
-inline auto& bandwidth_message_bytes_received_total = prometheus::BuildCounter().Name("bandwidth_message_bytes_received_total").Help("bandwidth_message_bytes_received_total").Register(*registry);
-inline auto& bandwidth_message_bytes_sent_total = prometheus::BuildCounter().Name("bandwidth_message_bytes_sent_total").Help("bandwidth_message_bytes_sent_total").Register(*registry);
-inline auto& message_received = prometheus::BuildCounter().Name("message_received").Help("message_received").Register(*registry);
-inline auto& message_sent = prometheus::BuildCounter().Name("message_sent").Help("message_sent").Register(*registry);
-inline auto& misbehavior_banned = prometheus::BuildCounter().Name("misbehavior_banned").Help("misbehavior_banned").Register(*registry);
-inline auto& transactions_accepted = prometheus::BuildCounter().Name("transactions_accepted").Help("transactions_accepted").Register(*registry);
-inline auto& transactions_fees = prometheus::BuildCounter().Name("transactions_fees").Help("transactions_fees").Register(*registry);
-inline auto& transactions_input_value = prometheus::BuildCounter().Name("transactions_input_value").Help("transactions_input_value").Register(*registry);
-inline auto& transactions_inputs = prometheus::BuildCounter().Name("transactions_inputs").Help("transactions_inputs").Register(*registry);
-inline auto& transactions_output_value = prometheus::BuildCounter().Name("transactions_output_value").Help("transactions_output_value").Register(*registry);
-inline auto& transactions_outputs = prometheus::BuildCounter().Name("transactions_outputs").Help("transactions_outputs").Register(*registry);
-inline auto& transactions_sig_ops = prometheus::BuildCounter().Name("transactions_sig_ops").Help("transactions_sig_ops").Register(*registry);
-inline auto& transactions_size_bytes = prometheus::BuildCounter().Name("transactions_size_bytes").Help("transactions_size_bytes").Register(*registry);
-inline auto& warnings_invalid_block = prometheus::BuildCounter().Name("warnings_invalid_block").Help("warnings_invalid_block").Register(*registry);
-inline auto& bandwidth_message_bytes_received = prometheus::BuildCounter().Name("bandwidth_message_bytes_received").Help("bandwidth_message_bytes_received").Register(*registry);
-inline auto& bandwidth_message_bytes_sent = prometheus::BuildCounter().Name("bandwidth_message_bytes_sent").Help("bandwidth_message_bytes_sent").Register(*registry);
+inline auto& bandwidth_bytes_received_total = prometheus::BuildCounter()
+    .Name("btc_bandwidth_bytes_received_total")
+    .Help("Total Received Bandwidth in bytes")
+    .Register(*registry);
+inline auto& bandwidth_bytes_sent_total = prometheus::BuildCounter()
+    .Name("btc_bandwidth_bytes_sent_total")
+    .Help("Total Sent Bnadwidth in bytes")
+    .Register(*registry);
+inline auto& bandwidth_message_bytes_received_total = prometheus::BuildCounter()
+    .Name("btc_bandwidth_message_bytes_received_total")
+    .Help("Total Received Message Bandwidth in bytes")
+    .Register(*registry);
+inline auto& bandwidth_message_bytes_sent_total = prometheus::BuildCounter()
+    .Name("btc_bandwidth_message_bytes_sent_total")
+    .Help("Total Sent Message Bandwidth in bytes")
+    .Register(*registry);
+inline auto& message_received = prometheus::BuildCounter()
+    .Name("btc_message_received")
+    .Help("Count of Messages Received")
+    .Register(*registry);
+inline auto& message_sent = prometheus::BuildCounter()
+    .Name("btc_message_sent")
+    .Help("Count of Messages Sent")
+    .Register(*registry);
+inline auto& misbehavior_banned = prometheus::BuildCounter()
+    .Name("btc_misbehavior_banned")
+    .Help("Count of Banned Peers")
+    .Register(*registry);
+inline auto& transactions_accepted = prometheus::BuildCounter()
+    .Name("btc_transactions_accepted")
+    .Help("Count of Transactions Accepted")
+    .Register(*registry);
+inline auto& transactions_fees = prometheus::BuildCounter()
+    .Name("btc_transactions_fees")
+    .Help("Current Transaction Fees ")
+    .Register(*registry);
+inline auto& transactions_input_value = prometheus::BuildCounter()
+    .Name("btc_transactions_input_value")
+    .Help("Current Transaction Input Value")
+    .Register(*registry);
+inline auto& transactions_inputs = prometheus::BuildCounter()
+    .Name("btc_transactions_inputs")
+    .Help("Current Transaction Input")
+    .Register(*registry);
+inline auto& transactions_output_value = prometheus::BuildCounter()
+    .Name("btc_transactions_output_value")
+    .Help("Current Transaction Output Value")
+    .Register(*registry);
+inline auto& transactions_outputs = prometheus::BuildCounter()
+    .Name("btc_transactions_outputs")
+    .Help("Current Transaction Output")
+    .Register(*registry);
+inline auto& transactions_sig_ops = prometheus::BuildCounter()
+    .Name("btc_transactions_sig_ops")
+    .Help("Current Transaction SigOps")
+    .Register(*registry);
+inline auto& transactions_size_bytes = prometheus::BuildCounter()
+    .Name("btc_transactions_size_bytes")
+    .Help("Transaction Size in Bytes")
+    .Register(*registry);
+inline auto& warnings_invalid_block = prometheus::BuildCounter()
+    .Name("btc_warnings_invalid_block")
+    .Help("Count of Invalid Block Warning")
+    .Register(*registry);
+inline auto& bandwidth_message_bytes_received = prometheus::BuildCounter()
+    .Name("btc_bandwidth_message_bytes_received")
+    .Help("Bandwidth Received Messages in bytes")
+    .Register(*registry);
+inline auto& bandwidth_message_bytes_sent = prometheus::BuildCounter()
+    .Name("btc_bandwidth_message_bytes_sent")
+    .Help("Bandwidth Sent Messages in bytes")
+    .Register(*registry);
 
 inline auto& BandwidthBytesReceivedTotal = bandwidth_bytes_received_total.Add({});
 inline auto& BandwidthBytesSentTotal = bandwidth_bytes_sent_total.Add({});
@@ -63,59 +119,218 @@ inline auto& BandwidthMessageBytesSent = bandwidth_message_bytes_sent.Add({});
 /* ***************************** */
 /* gauges */
 /* ***************************** */
-inline auto& accept_to_memory_pool_ms = prometheus::BuildGauge().Name("accept_to_memory_pool_ms").Help("accept_to_memory_pool_ms").Register(*registry);
-inline auto& activate_best_chain_ms = prometheus::BuildGauge().Name("activate_best_chain_ms").Help("activate_best_chain_ms").Register(*registry);
-inline auto& activate_block_ms = prometheus::BuildGauge().Name("activate_block_ms").Help("activate_block_ms").Register(*registry);
-inline auto& bandwidth_bytes_received = prometheus::BuildGauge().Name("bandwidth_bytes_received").Help("bandwidth_bytes_received").Register(*registry);
-inline auto& bandwidth_bytes_sent = prometheus::BuildGauge().Name("badwidth_bytes_sent").Help("bandwidth_bytes_sent").Register(*registry);
-inline auto& block_height = prometheus::BuildGauge().Name("block_height").Help("block_height").Register(*registry);
-inline auto& block_num_transations = prometheus::BuildGauge().Name("block_num_transations").Help("block_num_transations").Register(*registry);
-inline auto& block_sigops = prometheus::BuildGauge().Name("block_sigops").Help("block_sigops").Register(*registry);
-inline auto& block_size_bytes = prometheus::BuildGauge().Name("block_current_size_bytes").Help("block_current_size_bytes").Register(*registry);
-inline auto& block_size_witness_bytes = prometheus::BuildGauge().Name("block_current_size_witness_bytes").Help("block_current_size_witness_bytes").Register(*registry);
-inline auto& block_version = prometheus::BuildGauge().Name("block_version").Help("block_version").Register(*registry);
-inline auto& block_weight = prometheus::BuildGauge().Name("block_weight").Help("block_weight").Register(*registry);
-inline auto& check_block_us = prometheus::BuildGauge().Name("check_block_us").Help("check_block_us").Register(*registry);
-inline auto& check_inputs_ms = prometheus::BuildGauge().Name("check_inputs_ms").Help("check_inputs_ms").Register(*registry);
-inline auto& check_transaction_us = prometheus::BuildGauge().Name("check_transaction_us").Help("check_transaction_us").Register(*registry);
-inline auto& connect_block_ms = prometheus::BuildGauge().Name("connect_block_ms").Help("connect_block_ms").Register(*registry);
-inline auto& connect_tip_ms = prometheus::BuildGauge().Name("connect_tip_ms").Help("connect_tip_ms").Register(*registry);
-inline auto& disconnect_block_ms = prometheus::BuildGauge().Name("disconnect_block_ms").Help("disconnect_block_ms").Register(*registry);
-inline auto& fee_name = prometheus::BuildGauge().Name("fee_name").Help("fee_name").Register(*registry);
-inline auto& message_received_inv_block = prometheus::BuildGauge().Name("message_received_inv_block").Help("message_received_inv_block").Register(*registry);
-inline auto& message_received_inv_tx = prometheus::BuildGauge().Name("message_received_inv_tx").Help("message_received_inv_tx").Register(*registry);
-inline auto& misbehavior_amount = prometheus::BuildGauge().Name("misbehavior_amount").Help("misbehavior_amount").Register(*registry);
-inline auto& network_difficulty = prometheus::BuildGauge().Name("network_difficulty").Help("network_difficulty").Register(*registry);
-inline auto& network_exahashes_per_second = prometheus::BuildGauge().Name("network_exahashes_per_second").Help("network_exahashes_per_second").Register(*registry);
-inline auto& peers_connect = prometheus::BuildGauge().Name("peers_connect").Help("peers_connect").Register(*registry);
-inline auto& peers_disconnect = prometheus::BuildGauge().Name("peers_disconnect").Help("peers_disconnect").Register(*registry);
-inline auto& peers_full_node_connections = prometheus::BuildGauge().Name("peers_full_node_connections").Help("peers_full_node_connections").Register(*registry);
-inline auto& peers_inbound_connections = prometheus::BuildGauge().Name("peers_inbound_connections").Help("peers_inbound_connections").Register(*registry);
-inline auto& peers_ipv4_connections = prometheus::BuildGauge().Name("peers_ipv4_connections").Help("peers_ipv4_connections").Register(*registry);
-inline auto& peers_ipv6_connections = prometheus::BuildGauge().Name("peers_ipv6_connections").Help("peers_ipv6_connections").Register(*registry);
-inline auto& peers_known_addresses = prometheus::BuildGauge().Name("peers_known_addresses").Help("peers_known_addresses").Register(*registry);
-inline auto& peers_outbound_connections = prometheus::BuildGauge().Name("peers_outbound_connections").Help("peers_outbound_connections").Register(*registry);
-inline auto& peers_ping_us = prometheus::BuildGauge().Name("peers_ping_us").Help("peers_ping_us").Register(*registry);
-inline auto& peers_spv_node_connections = prometheus::BuildGauge().Name("peers_spv_node_connections").Help("peers_spv_node_connections").Register(*registry);
-inline auto& peers_tor_connections = prometheus::BuildGauge().Name("peers_tor_connections").Help("peers_tor_connections").Register(*registry);
-inline auto& peers_total_connections = prometheus::BuildGauge().Name("peers_total_connections").Help("peers_total_connections").Register(*registry);
-inline auto& transactions_duplicate = prometheus::BuildGauge().Name("transactions_duplicate").Help("transactions_duplicate").Register(*registry);
-inline auto& transactions_mempool_memory_usage_bytes = prometheus::BuildGauge().Name("transactions_mempool_memory_usage_bytes").Help("transactions_mempool_memory_usage_bytes").Register(*registry);
-inline auto& transactions_mempool_min_free = prometheus::BuildGauge().Name("transactions_mempool_min_free_per_kb").Help("transactions_mempool_min_free_per_kb").Register(*registry);
-inline auto& transactions_mempool_total_transactions = prometheus::BuildGauge().Name("transactions_mempool_total_transactions").Help("transactions_mempool_total_transactions").Register(*registry);
-inline auto& transactions_mempool_total_tx_bytes = prometheus::BuildGauge().Name("transactions_mempool_total_tx_bytes").Help("transactions_mempool_total_tx_bytes").Register(*registry);
-inline auto& transactions_orphans = prometheus::BuildGauge().Name("transactions_orphans").Help("transactions_orphans").Register(*registry);
-inline auto& transactions_orphans_add = prometheus::BuildGauge().Name("transactions_orphans_add").Help("transactions_orphans_add").Register(*registry);
-inline auto& transactions_orphans_remove = prometheus::BuildGauge().Name("transactions_orphans_remove").Help("transactions_orphans_remove").Register(*registry);
-inline auto& transactions_tx_cache_size = prometheus::BuildGauge().Name("transactions_tx_cache_size").Help("transactions_tx_cache_size").Register(*registry);
-inline auto& transactions_tx_in_memory_pool = prometheus::BuildGauge().Name("transactions_tx_in_memory_pool").Help("transactions_tx_in_memory_pool").Register(*registry);
-inline auto& utxoset_block_height = prometheus::BuildGauge().Name("utxoset_block_height").Help("utxoset_block_height").Register(*registry);
-inline auto& utxoset_db_size_bytes = prometheus::BuildGauge().Name("utxoset_db_size_bytes").Help("utxoset_db_size_bytes").Register(*registry);
-inline auto& utxoset_total_btc_amount = prometheus::BuildGauge().Name("utxoset_total_btc_amount").Help("utxoset_total_btc_amount").Register(*registry);
-inline auto& utxoset_tx = prometheus::BuildGauge().Name("utxoset_tx").Help("utxoset_tx").Register(*registry);
-inline auto& utxoset_tx_outputs = prometheus::BuildGauge().Name("utxoset_tx_outputs").Help("utxoset_tx_outputs").Register(*registry);
-inline auto& transactions_total_count = prometheus::BuildGauge().Name("transactions_total_count").Help("transactions_total_count").Register(*registry);
-inline auto& transactions_tx_rate = prometheus::BuildGauge().Name("transactions_tx_rate").Help("transactions_tx_rate").Register(*registry);
+inline auto& accept_to_memory_pool_ms = prometheus::BuildGauge()
+    .Name("btc_accept_to_memory_pool_ms")
+    .Help("Time to accept to memory pool in ms")
+    .Register(*registry);
+inline auto& activate_best_chain_ms = prometheus::BuildGauge()
+    .Name("btc_activate_best_chain_ms")
+    .Help("Time to activate best chain in ms")
+    .Register(*registry);
+inline auto& activate_block_ms = prometheus::BuildGauge()
+    .Name("btc_activate_block_ms")
+    .Help("Time to activate block in ms")
+    .Register(*registry);
+inline auto& bandwidth_bytes_received = prometheus::BuildGauge()
+    .Name("btc_bandwidth_bytes_received")
+    .Help("Bandwidth Received in bytes")
+    .Register(*registry);
+inline auto& bandwidth_bytes_sent = prometheus::BuildGauge()
+    .Name("btc_badwidth_bytes_sent")
+    .Help("Bandwidth Received in bytes")
+    .Register(*registry);
+inline auto& block_height = prometheus::BuildGauge()
+    .Name("btc_block_height")
+    .Help("Block Height")
+    .Register(*registry);
+inline auto& block_num_transations = prometheus::BuildGauge()
+    .Name("btc_block_num_transations")
+    .Help("Count of Transactions")
+    .Register(*registry);
+inline auto& block_sigops = prometheus::BuildGauge()
+    .Name("btc_block_sigops")
+    .Help("Count of SigOps")
+    .Register(*registry);
+inline auto& block_size_bytes = prometheus::BuildGauge()
+    .Name("btc_block_current_size_bytes")
+    .Help("Current block size in bytes")
+    .Register(*registry);
+inline auto& block_size_witness_bytes = prometheus::BuildGauge()
+    .Name("btc_block_current_size_witness_bytes")
+    .Help("Current witness block size in bytes")
+    .Register(*registry);
+inline auto& block_version = prometheus::BuildGauge()
+    .Name("btc_block_version")
+    .Help("Current Block Version")
+    .Register(*registry);
+inline auto& block_weight = prometheus::BuildGauge()
+    .Name("btc_block_weight")
+    .Help("Current Block Weight")
+    .Register(*registry);
+inline auto& check_block_us = prometheus::BuildGauge()
+    .Name("btc_check_block_us")
+    .Help("Time to check block in us")
+    .Register(*registry);
+inline auto& check_inputs_ms = prometheus::BuildGauge()
+    .Name("btc_check_inputs_ms")
+    .Help("Time to check inputs in ms")
+    .Register(*registry);
+inline auto& check_transaction_us = prometheus::BuildGauge()
+    .Name("btc_check_transaction_us")
+    .Help("Time to check transactions in us")
+    .Register(*registry);
+inline auto& connect_block_ms = prometheus::BuildGauge()
+    .Name("btc_connect_block_ms")
+    .Help("Time to connect block in ms")
+    .Register(*registry);
+inline auto& connect_tip_ms = prometheus::BuildGauge()
+    .Name("btc_connect_tip_ms")
+    .Help("Time to connect tip in ms")
+    .Register(*registry);
+inline auto& disconnect_block_ms = prometheus::BuildGauge()
+    .Name("btc_disconnect_block_ms")
+    .Help("time to disconnect block in ms")
+    .Register(*registry);
+inline auto& fee_name = prometheus::BuildGauge()
+    .Name("btc_fee_name")
+    .Help("Fee Estimage")
+    .Register(*registry);
+inline auto& message_received_inv_block = prometheus::BuildGauge()
+    .Name("btc_message_received_inv_block")
+    .Help("Count of inv block messages")
+    .Register(*registry);
+inline auto& message_received_inv_tx = prometheus::BuildGauge()
+    .Name("btc_message_received_inv_tx")
+    .Help("Count of inv tx messages")
+    .Register(*registry);
+inline auto& misbehavior_amount = prometheus::BuildGauge()
+    .Name("btc_misbehavior_amount")
+    .Help("Misbehavior Amount")
+    .Register(*registry);
+inline auto& network_difficulty = prometheus::BuildGauge()
+    .Name("btc_network_difficulty")
+    .Help("Current Network Difficulty")
+    .Register(*registry);
+inline auto& network_exahashes_per_second = prometheus::BuildGauge()
+    .Name("btc_network_exahashes_per_second")
+    .Help("Current network exahashes per second")
+    .Register(*registry);
+inline auto& peers_connect = prometheus::BuildGauge()
+    .Name("btc_peers_connect")
+    .Help("Current peers connected")
+    .Register(*registry);
+inline auto& peers_disconnect = prometheus::BuildGauge()
+    .Name("btc_peers_disconnect")
+    .Help("Current peers disconnected")
+    .Register(*registry);
+inline auto& peers_full_node_connections = prometheus::BuildGauge()
+    .Name("btc_peers_full_node_connections")
+    .Help("Current Peers connected as full node")
+    .Register(*registry);
+inline auto& peers_inbound_connections = prometheus::BuildGauge()
+    .Name("btc_peers_inbound_connections")
+    .Help("Current inbound connections")
+    .Register(*registry);
+inline auto& peers_ipv4_connections = prometheus::BuildGauge()
+    .Name("btc_peers_ipv4_connections")
+    .Help("Current IPv4 connections")
+    .Register(*registry);
+inline auto& peers_ipv6_connections = prometheus::BuildGauge()
+    .Name("btc_peers_ipv6_connections")
+    .Help("Current IPv6 connections")
+    .Register(*registry);
+inline auto& peers_known_addresses = prometheus::BuildGauge()
+    .Name("btc_peers_known_addresses")
+    .Help("Current known peer addresses")
+    .Register(*registry);
+inline auto& peers_outbound_connections = prometheus::BuildGauge()
+    .Name("btc_peers_outbound_connections")
+    .Help("Current outputbound peer connections")
+    .Register(*registry);
+inline auto& peers_ping_us = prometheus::BuildGauge()
+    .Name("btc_peers_ping_us")
+    .Help("Current peer ping time in us")
+    .Register(*registry);
+inline auto& peers_spv_node_connections = prometheus::BuildGauge()
+    .Name("btc_peers_spv_node_connections")
+    .Help("Current spv connections")
+    .Register(*registry);
+inline auto& peers_tor_connections = prometheus::BuildGauge()
+    .Name("btc_peers_tor_connections")
+    .Help("Current TOR connections")
+    .Register(*registry);
+inline auto& peers_total_connections = prometheus::BuildGauge()
+    .Name("btc_peers_total_connections")
+    .Help("Current total peer connections")
+    .Register(*registry);
+inline auto& transactions_duplicate = prometheus::BuildGauge()
+    .Name("btc_transactions_duplicate")
+    .Help("Current duplicate transactions")
+    .Register(*registry);
+inline auto& transactions_mempool_memory_usage_bytes = prometheus::BuildGauge()
+    .Name("btc_transactions_mempool_memory_usage_bytes")
+    .Help("Current tx mempoool memory usage in bytes")
+    .Register(*registry);
+inline auto& transactions_mempool_min_free = prometheus::BuildGauge()
+    .Name("btc_transactions_mempool_min_free_per_kb")
+    .Help("Current tx mempoool memory min free in kb")
+    .Register(*registry);
+inline auto& transactions_mempool_total_transactions = prometheus::BuildGauge()
+    .Name("btc_transactions_mempool_total_transactions")
+    .Help("Current Transactions in mempool")
+    .Register(*registry);
+inline auto& transactions_mempool_total_tx_bytes = prometheus::BuildGauge()
+    .Name("btc_transactions_mempool_total_tx_bytes")
+    .Help("Current transactions in mempool in bytes")
+    .Register(*registry);
+inline auto& transactions_orphans = prometheus::BuildGauge()
+    .Name("btc_transactions_orphans")
+    .Help("Current oprhaned transactions")
+    .Register(*registry);
+inline auto& transactions_orphans_add = prometheus::BuildGauge()
+    .Name("btc_transactions_orphans_add")
+    .Help("Current added orphaned transactions")
+    .Register(*registry);
+inline auto& transactions_orphans_remove = prometheus::BuildGauge()
+    .Name("btc_transactions_orphans_remove")
+    .Help("Current removed orphaned transactions")
+    .Register(*registry);
+inline auto& transactions_tx_cache_size = prometheus::BuildGauge()
+    .Name("btc_transactions_tx_cache_size")
+    .Help("Current transaction tx cache size")
+    .Register(*registry);
+inline auto& transactions_tx_in_memory_pool = prometheus::BuildGauge()
+    .Name("btc_transactions_tx_in_memory_pool")
+    .Help("Current transactions in mempool")
+    .Register(*registry);
+inline auto& utxoset_block_height = prometheus::BuildGauge()
+    .Name("btc_utxoset_block_height")
+    .Help("Current utxoset block height")
+    .Register(*registry);
+inline auto& utxoset_db_size_bytes = prometheus::BuildGauge()
+    .Name("btc_utxoset_db_size_bytes")
+    .Help("Current utxoset db size in bytes")
+    .Register(*registry);
+inline auto& utxoset_total_btc_amount = prometheus::BuildGauge()
+    .Name("btc_utxoset_total_btc_amount")
+    .Help("Current utxoset in btc")
+    .Register(*registry);
+inline auto& utxoset_tx = prometheus::BuildGauge()
+    .Name("btc_utxoset_tx")
+    .Help("Current utxoset tx")
+    .Register(*registry);
+inline auto& utxoset_tx_outputs = prometheus::BuildGauge()
+    .Name("btc_utxoset_tx_outputs")
+    .Help("Current utxoset tx outputs")
+    .Register(*registry);
+inline auto& transactions_total_count = prometheus::BuildGauge()
+    .Name("btc_transactions_total_count")
+    .Help("Current total transactions")
+    .Register(*registry);
+inline auto& transactions_tx_rate = prometheus::BuildGauge()
+    .Name("btc_transactions_tx_rate")
+    .Help("Current transaction rate")
+    .Register(*registry);
 
 inline auto& AcceptToMemoryPoolMs = accept_to_memory_pool_ms.Add({});
 inline auto& ActivateBestChainMs = activate_best_chain_ms.Add({});

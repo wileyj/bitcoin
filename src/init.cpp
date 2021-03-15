@@ -21,7 +21,7 @@
 #include <hash.h>
 #include <httprpc.h>
 #include <httpserver.h>
-#include <prometheus.h>
+#include <prometheus.h> //promserver
 #include <index/blockfilterindex.h>
 #include <index/txindex.h>
 #include <interfaces/chain.h>
@@ -193,7 +193,6 @@ void Shutdown(NodeContext& node)
     StopREST();
     StopRPC();
     StopHTTPServer();
-    //promserver
 
     for (const auto& client : node.chain_clients) {
         client->flush();
@@ -440,8 +439,6 @@ void SetupServerArgs(NodeContext& node)
     argsman.AddArg("-discover", "Discover own IP addresses (default: 1 when listening and no -externalip or -proxy)", ArgsManager::ALLOW_ANY, OptionsCategory::CONNECTION);
     argsman.AddArg("-dns", strprintf("Allow DNS lookups for -addnode, -seednode and -connect (default: %u)", DEFAULT_NAME_LOOKUP), ArgsManager::ALLOW_ANY, OptionsCategory::CONNECTION);
     argsman.AddArg("-dnsseed", "Query for peer addresses via DNS lookup, if low on addresses (default: 1 unless -connect used)", ArgsManager::ALLOW_ANY, OptionsCategory::CONNECTION);
-    // argsman.AddArg("-promserver", "Start Prometheus server on port 9153 (default: 1 unless -connect used)", ArgsManager::ALLOW_ANY, OptionsCategory::CONNECTION);
-    argsman.AddArg(  "-promserver",   "Start Prometheus server on port 9153",   ArgsManager::ALLOW_ANY,   OptionsCategory::OPTIONS);
     argsman.AddArg("-externalip=<ip>", "Specify your own public address", ArgsManager::ALLOW_ANY, OptionsCategory::CONNECTION);
     argsman.AddArg("-forcednsseed", strprintf("Always query for peer addresses via DNS lookup (default: %u)", DEFAULT_FORCEDNSSEED), ArgsManager::ALLOW_ANY, OptionsCategory::CONNECTION);
     argsman.AddArg("-listen", "Accept connections from outside (default: 1 if no -proxy or -connect)", ArgsManager::ALLOW_ANY, OptionsCategory::CONNECTION);
@@ -579,6 +576,9 @@ void SetupServerArgs(NodeContext& node)
     argsman.AddArg("-rpcwhitelistdefault", "Sets default behavior for rpc whitelisting. Unless rpcwhitelistdefault is set to 0, if any -rpcwhitelist is set, the rpc server acts as if all rpc users are subject to empty-unless-otherwise-specified whitelists. If rpcwhitelistdefault is set to 1 and no -rpcwhitelist is set, rpc server acts as if all rpc users are subject to empty whitelists.", ArgsManager::ALLOW_BOOL, OptionsCategory::RPC);
     argsman.AddArg("-rpcworkqueue=<n>", strprintf("Set the depth of the work queue to service RPC calls (default: %d)", DEFAULT_HTTP_WORKQUEUE), ArgsManager::ALLOW_ANY | ArgsManager::DEBUG_ONLY, OptionsCategory::RPC);
     argsman.AddArg("-server", "Accept command line and JSON-RPC commands", ArgsManager::ALLOW_ANY, OptionsCategory::RPC);
+    //promserver
+    argsman.AddArg(  "-promserver", "Start Prometheus server on port 9153 (default: 1)", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
+    argsman.AddArg("-promserverbind=<ip>", strprintf("Bind to given address to listen for Prometheus connections. Do not expose the Prometheus server to untrusted networks such as the public internet! (default: %u)", DEFAULT_PROM_BIND), ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
 
 #if HAVE_DECL_DAEMON
     argsman.AddArg("-daemon", "Run in the background as a daemon and accept commands", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
@@ -822,8 +822,8 @@ void InitParameterInteraction(ArgsManager& args)
 
     // promserver
     if (args.IsArgSet("-promserver")) {
-      if (args.SoftSetBoolArg("-promserver", false))
-          LogPrintf("%s: parameter interaction: -promserver set -> setting -promserver=0\n", __func__);
+        if (args.SoftSetBoolArg("-promserver", false))
+            LogPrintf("%s: parameter interaction: -promserver set -> setting -promserver=0\n", __func__);
     }
 
     if (args.IsArgSet("-proxy")) {
