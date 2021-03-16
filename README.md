@@ -72,12 +72,12 @@ sh autogen.sh
     --disable-gui-tests \
     --enable-static \
     --disable-tests \
+    --disable-bench \
     --without-miniupnpc \
     --disable-shared \
     --with-pic \
     --enable-cxx \
-    LDFLAGS="-static-libstdc++" \
-    CPPFLAGS="-I/usr/include/prometheus -static-libstdc++" 
+    CPPFLAGS="${PROM_CPPFLAGS} -static-libstdc++"
 ```
 
 ```bash
