@@ -38,7 +38,7 @@
 #include <unordered_map>
 
 #include <math.h>
-#include <prometheus.h>
+#include <prometheus.h> // promserver
 
 
 /** Maximum number of block-relay-only anchor connections */
@@ -476,9 +476,8 @@ CNode* CConnman::ConnectNode(CAddress addrConnect, const char *pszDest, bool fCo
     CAddress addr_bind = GetBindAddress(hSocket);
     CNode* pnode = new CNode(id, nLocalServices, hSocket, addrConnect, CalculateKeyedNetGroup(addrConnect), nonce, addr_bind, pszDest ? pszDest : "", conn_type);
     pnode->AddRef();
-    //promserver
+    // promserver
     PeersConnect.Increment();
-    // LogPrintf("PROM %s::%d : PeersConnect INC -> (%s)\n", __FILE__, __LINE__, 1);
     // We're making a new connection, harvest entropy from the time (and our peer count)
     RandAddEvent((uint32_t)id);
 
@@ -491,9 +490,8 @@ void CNode::CloseSocketDisconnect()
     LOCK(cs_hSocket);
     if (hSocket != INVALID_SOCKET)
     {
-        //promserver
+        // promserver
         PeersDisconnect.Increment();
-        // LogPrintf("PROM %s::%d : PeersDisconnect INC -> (%s)\n", __FILE__, __LINE__, 1);
         LogPrint(BCLog::NET, "disconnecting peer=%d\n", id);
         CloseSocket(hSocket);
     }
@@ -604,6 +602,7 @@ void CNode::copyStats(CNodeStats &stats, const std::vector<bool> &m_asmap)
         stats.minFeeFilter = 0;
     }
 
+    // promserver
     // It is common for nodes with good ping times to suddenly become lagged,
     // due to a new block arriving or other large transfer.
     // Merely reporting pingtime might fool the caller into thinking the node was still responsive,
@@ -614,7 +613,6 @@ void CNode::copyStats(CNodeStats &stats, const std::vector<bool> &m_asmap)
     if ((0 != nPingNonceSent) && (0 != m_ping_start.load().count())) {
         ping_wait = GetTime<std::chrono::microseconds>() - m_ping_start.load();
     }
-
     // Raw ping time is in microseconds, but show it to user as whole seconds (Bitcoin users should be well used to small numbers with many decimal places by now :)
     stats.m_ping_usec = nPingUsecTime;
     stats.m_min_ping_usec  = nMinPingUsecTime;
@@ -661,10 +659,9 @@ bool CNode::ReceiveMsgBytes(Span<const uint8_t> msg_bytes, bool& complete)
                 i = mapRecvBytesPerMsgCmd.find(NET_MESSAGE_COMMAND_OTHER);
             assert(i != mapRecvBytesPerMsgCmd.end());
             i->second += result->m_raw_message_size;
-            //promserver
+            // promserver
             auto& BandwidthMessageBytesReceived = bandwidth_message_bytes_received.Add( {{"name", std::string(result->m_command)}} );
             BandwidthMessageBytesReceived.Increment(result->m_raw_message_size);
-            // LogPrintf("PROM %s::%d : BandwidthMessageBytesReceived INC -> (%s)\n", __FILE__, __LINE__, result->m_raw_message_size);
 
             // push the message to the process queue,
             vRecvMsg.push_back(std::move(*result));
@@ -1264,7 +1261,6 @@ void CConnman::NotifyNumConnectionsChanged()
             // promserver
             if(pnode->nPingUsecTime > 0)
                 PeersPingUs.Set(pnode->nPingUsecTime);
-                // LogPrintf("PROM %s::%d : PeersPingUs SET -> (%s)\n", __FILE__, __LINE__, pnode->nPingUsecTime);
 
         }
         for (const std::string &msg : getAllNetMessageTypes())
@@ -1273,28 +1269,17 @@ void CConnman::NotifyNumConnectionsChanged()
             auto& BandwidthMessageBytesReceivedTotal = bandwidth_message_bytes_received_total.Add( {{"name", msg}} );
             auto& BandwidthMessageBytesSentTotal = bandwidth_message_bytes_sent_total.Add( {{"name", msg}} );
             BandwidthMessageBytesReceivedTotal.Increment(mapRecvBytesMsgStats[msg]);
-            // LogPrintf("PROM %s::%d : BandwidthMessageBytesReceivedTotal INC -> (%s)\n", __FILE__, __LINE__, mapRecvBytesMsgStats[msg]);
             BandwidthMessageBytesSentTotal.Increment(mapSentBytesMsgStats[msg]);
-            // LogPrintf("PROM %s::%d : BandwidthMessageBytesSentTotal INC -> (%s)\n", __FILE__, __LINE__, mapSentBytesMsgStats[msg]);
-
         }
         // promserver
         PeersTotalConnections.Set(nPrevNodeCount);
-        // LogPrintf("PROM %s::%d : PeersTotalConnections SET -> (%s)\n", __FILE__, __LINE__, nPrevNodeCount);
         PeersSpvNodeConnections.Set(spvNodes);
-        // LogPrintf("PROM %s::%d : PeersSpvNodeConnections SET -> (%s)\n", __FILE__, __LINE__, spvNodes);
         PeersFullNodeConnections.Set(fullNodes);
-        // LogPrintf("PROM %s::%d : PeersFullNodeConnections SET -> (%s)\n", __FILE__, __LINE__, fullNodes);
         PeersInboundConnections.Set(inboundNodes);
-        // LogPrintf("PROM %s::%d : PeersInboundConnections SET -> (%s)\n", __FILE__, __LINE__, inboundNodes);
         PeersOutboundConnections.Set(outboundNodes);
-        // LogPrintf("PROM %s::%d : PeersOutboundConnections SET -> (%s)\n", __FILE__, __LINE__, outboundNodes);
         PeersIpv4Connections.Set(ipv4Nodes);
-        // LogPrintf("PROM %s::%d : PeersIpv4Connections SET -> (%s)\n", __FILE__, __LINE__, ipv4Nodes);
         PeersIpv6Connections.Set(ipv6Nodes);
-        // LogPrintf("PROM %s::%d : PeersIpv6Connections SET -> (%s)\n", __FILE__, __LINE__, ipv6Nodes);
         PeersTorConnections.Set(torNodes);
-        // LogPrintf("PROM %s::%d : PeersTorConnections SET -> (%s)\n", __FILE__, __LINE__, torNodes);
     }
 }
 
@@ -1743,7 +1728,7 @@ void CConnman::ThreadDNSAddressSeed()
     LogPrintf("%d addresses found from DNS seeds\n", found);
 }
 
-/* promserver */
+// promserver
 void CConnman::ThreadPromServer()
 {
     StartPrometheus();
@@ -2511,7 +2496,7 @@ bool CConnman::Start(CScheduler& scheduler, const Options& connOptions)
     // Send and receive from sockets, accept connections
     threadSocketHandler = std::thread(&TraceThread<std::function<void()> >, "net", std::function<void()>(std::bind(&CConnman::ThreadSocketHandler, this)));
 
-    /* promserver */
+    // promserver
     if (!gArgs.GetBoolArg("-promserver", false))
       LogPrintf("Prometheus Server disabled\n");
     else
@@ -2597,7 +2582,7 @@ void CConnman::StopThreads()
         threadDNSAddressSeed.join();
     if (threadSocketHandler.joinable())
         threadSocketHandler.join();
-    /* promserver */
+    // promserver
     if (threadPromServer.joinable())
         if (!stop_prom_thread)
           if (threadPromServer.joinable()) {
@@ -2832,9 +2817,7 @@ void CConnman::RecordBytesRecv(uint64_t bytes)
     nTotalBytesRecv += bytes;
     // promserver
     BandwidthBytesReceived.Set(bytes);
-    // LogPrintf("PROM %s::%d : BandwidthBytesReceived SET -> (%s)\n", __FILE__, __LINE__, bytes);
     BandwidthBytesReceivedTotal.Increment(nTotalBytesRecv);
-    // LogPrintf("PROM %s::%d : BandwidthBytesReceivedTotal INC -> (%s)\n", __FILE__, __LINE__, nTotalBytesRecv);
 }
 
 void CConnman::RecordBytesSent(uint64_t bytes)
@@ -2843,9 +2826,7 @@ void CConnman::RecordBytesSent(uint64_t bytes)
     nTotalBytesSent += bytes;
     // promserver
     BandwidthBytesSent.Set(bytes);
-    // LogPrintf("PROM %s::%d : BandwidthBytesSent SET -> (%s)\n", __FILE__, __LINE__, bytes);
     BandwidthBytesSentTotal.Increment(nTotalBytesSent);
-    // LogPrintf("PROM %s::%d : BandwidthBytesSentTotal INC -> (%s)\n", __FILE__, __LINE__, nTotalBytesSent);
 
     const auto now = GetTime<std::chrono::seconds>();
     if (nMaxOutboundCycleStartTime + MAX_UPLOAD_TIMEFRAME < now)
@@ -2991,10 +2972,8 @@ void CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
     // promserver
     auto& BandwidthMessageBytesSent = bandwidth_message_bytes_sent.Add( {{"name", SanitizeString(msg.m_type.c_str())}} );
     BandwidthMessageBytesSent.Increment(nTotalSize);
-    // LogPrintf("PROM %s::%d : BandwidthMessageBytesSent INC (%s) -> (%s)\n", __FILE__, __LINE__, SanitizeString(msg.m_type.c_str()), 1);
     auto& MessageSent = message_sent.Add( {{"name", SanitizeString(msg.m_type.c_str())}} );
     MessageSent.Increment();
-    // LogPrintf("PROM %s::%d : MessageSent INC (%s) -> (%s)\n", __FILE__, __LINE__, SanitizeString(msg.m_type.c_str()), 1);
 
     size_t nBytesSent = 0;
     {

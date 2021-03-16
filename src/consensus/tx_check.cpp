@@ -7,7 +7,7 @@
 #include <primitives/transaction.h>
 #include <consensus/validation.h>
 #include <boost/thread.hpp>
-#include <prometheus.h>
+#include <prometheus.h> // promserver
 
 bool CheckTransaction(const CTransaction& tx, TxValidationState& state)
 {

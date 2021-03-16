@@ -45,7 +45,7 @@
 #include <condition_variable>
 #include <memory>
 #include <mutex>
-#include <prometheus.h>
+#include <prometheus.h> // promserver
 
 struct CUpdatedBlock
 {
@@ -1096,16 +1096,10 @@ static RPCHelpMan gettxoutsetinfo()
         ret.pushKV("total_amount", ValueFromAmount(stats.nTotalAmount));
         // promserver
         UtxosetTx.Set(stats.nTransactions);
-        // LogPrintf("PROM %s::%d : UtxosetTx SET -> (%s)\n", __FILE__, __LINE__, stats.nTransactions);
         UtxosetTxOutputs.Set(stats.nTransactionOutputs);
-        // LogPrintf("PROM %s::%d : UtxosetTxOutputs -SET > (%s)\n", __FILE__, __LINE__, stats.nTransactionOutputs);
         UtxosetDbSizeBytes.Set(stats.nDiskSize);
-        // LogPrintf("PROM %s::%d : UtxosetDbSizeBytes SET -> (%s)\n", __FILE__, __LINE__, stats.nDiskSize);
         UtxosetBlockHeight.Set(stats.nHeight);
-        // LogPrintf("PROM %s::%d : UtxosetBlockHeight SET -> (%s)\n", __FILE__, __LINE__, stats.nHeight);
         UtxosetTotalBTCAmount.Set((double)stats.nTotalAmount / (double)COIN);
-        // LogPrintf("PROM %s::%d : UtxosetTotalBTCAmount SET -> (%s)\n", __FILE__, __LINE__, (double)stats.nTotalAmount / (double)COIN);
-        
     } else {
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Unable to read UTXO set");
     }
@@ -1741,10 +1735,8 @@ static RPCHelpMan getchaintxstats()
             //statsClient.gaugeDouble("transactions.txRate", ((double)nTxDiff) / nTimeDiff);
             TransactionsTxRate.Set(nTxDiff/nTimeDiff);
         }
-        //promserver
+        // promserver
         TransactionsTotalCount.Set((int64_t)pindex->nChainTx);
-        // LogPrintf("PROM %s::%d : TransactionsTotalCount SET -> (%s)\n", __FILE__, __LINE__, (int64_t)pindex->nChainTx);
-
     }
 
     return ret;

@@ -34,7 +34,7 @@
 
 #include <memory>
 #include <typeinfo>
-#include <prometheus.h>
+#include <prometheus.h> // promserver
 
 /** Expiration time for orphan transactions in seconds */
 static constexpr int64_t ORPHAN_TX_EXPIRE_TIME = 20 * 60;
@@ -1115,9 +1115,7 @@ bool AddOrphanTx(const CTransactionRef& tx, NodeId peer) EXCLUSIVE_LOCKS_REQUIRE
              mapOrphanTransactions.size(), mapOrphanTransactionsByPrev.size());
     // promserver
     TransactionsOrphansAdd.Increment();
-    // LogPrintf("PROM %s::%d : TransaTransactionsOrphansAddctionsAccepted INC -> (%s)\n", __FILE__, __LINE__, 1);
     TransactionsOrphans.Set(mapOrphanTransactions.size());
-    // LogPrintf("PROM %s::%d : TransactionsOrphans SET -> (%s)\n", __FILE__, __LINE__, mapOrphanTransactions.size());
     return true;
 }
 
@@ -1151,9 +1149,7 @@ int static EraseOrphanTx(uint256 hash) EXCLUSIVE_LOCKS_REQUIRED(g_cs_orphans)
     mapOrphanTransactions.erase(it);
     // promserver
     TransactionsOrphansRemove.Increment();
-    // LogPrintf("PROM %s::%d : TransactionsOrphansRemove INC -> (%s)\n", __FILE__, __LINE__, 1);
     TransactionsOrphans.Set(mapOrphanTransactions.size());
-    // LogPrintf("PROM %s::%d : TransactionsOrphans SET -> (%s)\n", __FILE__, __LINE__, mapOrphanTransactions.size());
     return 1;
 }
 
@@ -1225,12 +1221,10 @@ void PeerManagerImpl::Misbehaving(const NodeId pnode, const int howmuch, const s
         peer->m_should_discourage = true;
         // promserver
         MisbehaviorBanned.Increment();
-        // LogPrintf("PROM %s::%d : MisbehaviorBanned INC -> (%s)\n", __FILE__, __LINE__, 1);
     } else {
         LogPrint(BCLog::NET, "Misbehaving: peer=%d (%d -> %d)%s\n", pnode, peer->m_misbehavior_score - howmuch, peer->m_misbehavior_score, message_prefixed);
         // promserver
         MisbehaviorAmount.Set(howmuch);
-        // LogPrintf("PROM %s::%d : MisbehaviorAmount SET -> (%s)\n", __FILE__, __LINE__, howmuch);
     }
 }
 
@@ -2484,10 +2478,8 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
 {
     LogPrint(BCLog::NET, "received: %s (%u bytes) peer=%d\n", SanitizeString(msg_type), vRecv.size(), pfrom.GetId());
     // promserver
-    // auto& message_received = prometheus::BuildCounter().Name("message_received_" + SanitizeString(msg_type)).Help("message_received_" + SanitizeString(msg_type)).Register(*registry);
     auto& MessageReceived = message_received.Add( {{"name", SanitizeString(msg_type) }} );
     MessageReceived.Increment();
-    // LogPrintf("PROM %s::%d : MessageReceived INC -> (%s)\n", __FILE__, __LINE__, 1);
 
     PeerRef peer = GetPeerRef(pfrom.GetId());
     if (peer == nullptr) return;
@@ -2859,8 +2851,6 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
 
         // promserver
         PeersKnownAddresses.Set(m_connman.GetAddressCount());
-        // LogPrintf("PROM %s::%d : PeersKnownAddresses SET -> (%s)\n", __FILE__, __LINE__, m_connman.GetAddressCount());
-
         return;
     }
 
@@ -2902,7 +2892,6 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             if (inv.IsMsgBlk()) {
                 // promserver
                 MessageReceivedInvBlock.Increment();
-                // LogPrintf("PROM %s::%d : MessageReceivedInvBlock INC -> (%s)\n", __FILE__, __LINE__, 1);
                 const bool fAlreadyHave = AlreadyHaveBlock(inv.hash);
                 LogPrint(BCLog::NET, "got inv: %s  %s peer=%d\n", inv.ToString(), fAlreadyHave ? "have" : "new", pfrom.GetId());
 
@@ -2918,7 +2907,6 @@ void PeerManagerImpl::ProcessMessage(CNode& pfrom, const std::string& msg_type, 
             } else if (inv.IsGenTxMsg()) {
                 // promserver
                 MessageReceivedInvTx.Increment();
-                // LogPrintf("PROM %s::%d : MessageReceivedInvTx INC -> (%s)\n", __FILE__, __LINE__, 1);
                 const GenTxid gtxid = ToGenTxid(inv);
                 const bool fAlreadyHave = AlreadyHaveTx(gtxid, m_mempool);
                 LogPrint(BCLog::NET, "got inv: %s  %s peer=%d\n", inv.ToString(), fAlreadyHave ? "have" : "new", pfrom.GetId());

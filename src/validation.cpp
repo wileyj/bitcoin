@@ -51,7 +51,7 @@
 #include <string>
 
 #include <boost/algorithm/string/replace.hpp>
-#include <prometheus.h>
+#include <prometheus.h> // promserver
 
 #define MICRO 0.000001
 #define MILLI 0.001
@@ -597,7 +597,6 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
     if (m_pool.exists(hash)) {
         // promserver
         TransactionsDuplicate.Increment();
-        // LogPrintf("PROM %s::%d : TransactionsDuplicate INC -> (%s)\n", __FILE__, __LINE__, 1);
         return state.Invalid(TxValidationResult::TX_CONFLICT, "txn-already-in-mempool");
     }
 
@@ -928,19 +927,12 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
     }
     // promserver
     TransactionsSizeBytes.Increment(nSize);
-    // LogPrintf("PROM %s::%d : TransactionsSizeBytes INC -> (%s)\n", __FILE__, __LINE__, nSize);
     TransactionsFees.Increment(nFees);
-    // LogPrintf("PROM %s::%d : TransactionsFees INC -> (%s)\n", __FILE__, __LINE__, nFees);    
     TransactionsInputs.Increment(tx.vin.size());
-    // LogPrintf("PROM %s::%d : TransactionsInputs INC -> (%s)\n", __FILE__, __LINE__, tx.vin.size());
     TransactionsOutputs.Increment(tx.vout.size());
-    // LogPrintf("PROM %s::%d : TransactionsOutputs INC -> (%s)\n", __FILE__, __LINE__, tx.vout.size());
     TransactionsInputValue.Increment(nValueIn);
-    // LogPrintf("PROM %s::%d : TransactionsInputValue INC -> (%s)\n", __FILE__, __LINE__, nValueIn);
     TransactionsOutputValue.Increment(nValueOut);
-    // LogPrintf("PROM %s::%d : TransactionsOutputValue INC -> (%s)\n", __FILE__, __LINE__, nValueOut);
     TransactionsSigOps.Increment(nSigOpsCost);
-    // LogPrintf("PROM %s::%d : TransactionsSigOps INC -> (%s)\n", __FILE__, __LINE__, nSigOpsCost);
     return true;
 }
 
@@ -1081,19 +1073,12 @@ bool MemPoolAccept::AcceptSingleTransaction(const CTransactionRef& ptx, ATMPArgs
     boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration diff = finish - start;
     AcceptToMemoryPoolMs.Set(diff.total_milliseconds());
-    // LogPrintf("PROM %s::%d : AcceptToMemoryPoolMs SET -> (%s)\n", __FILE__, __LINE__, diff.total_milliseconds());
     TransactionsTxInMemoryPool.Set(m_pool.size());
-    // LogPrintf("PROM %s::%d : TransactionsTxInMemoryPool SET -> (%s)\n", __FILE__, __LINE__, m_pool.size());
     TransactionsAccepted.Increment();
-    // LogPrintf("PROM %s::%d : TransactionsAccepted INC -> (%s)\n", __FILE__, __LINE__, 1);
     TransactionsMempoolTotalTransactions.Set(m_pool.size());
-    // LogPrintf("PROM %s::%d : TransactionsMempoolTotalTransactions SET -> (%s)\n", __FILE__, __LINE__, m_pool.size());
     TransactionsMempoolTotalTXBytes.Set((int64_t) m_pool.GetTotalTxSize());
-    // LogPrintf("PROM %s::%d : TransactionsMempoolTotalTXBytes SET -> (%s)\n", __FILE__, __LINE__, (int64_t) m_pool.GetTotalTxSize());
     TransactionsMempoolMemoryUsageBytes.Set((int64_t) m_pool.DynamicMemoryUsage());
-    // LogPrintf("PROM %s::%d : TransactionsMempoolMemoryUsageBytes SET -> (%s)\n", __FILE__, __LINE__, (int64_t) m_pool.DynamicMemoryUsage());
     TransactionsMempoolMinFree.Set(m_pool.GetMinFee(gArgs.GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000).GetFeePerK());
-    // LogPrintf("PROM %s::%d : TransactionsMempoolMinFree SET -> (%s)\n", __FILE__, __LINE__, m_pool.GetMinFee(gArgs.GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000).GetFeePerK());
 
     return true;
 }
@@ -1396,7 +1381,6 @@ void static InvalidChainFound(CBlockIndex* pindexNew) EXCLUSIVE_LOCKS_REQUIRED(c
 {
     // promserver
     WarningsInvalidBlock.Increment();
-    // LogPrintf("PROM %s::%d : WarningsInvalidBlock INC -> (%s)\n", __FILE__, __LINE__, 1);
     if (!pindexBestInvalid || pindexNew->nChainWork > pindexBestInvalid->nChainWork)
         pindexBestInvalid = pindexNew;
     if (pindexBestHeader != nullptr && pindexBestHeader->GetAncestor(pindexNew->nHeight) == pindexNew) {
@@ -1419,7 +1403,6 @@ void static InvalidChainFound(CBlockIndex* pindexNew) EXCLUSIVE_LOCKS_REQUIRED(c
 void CChainState::InvalidBlockFound(CBlockIndex *pindex, const BlockValidationState &state) {
     // promserver
     WarningsInvalidBlock.Increment();
-    // LogPrintf("PROM %s::%d : WarningsInvalidBlock INC -> (%s)\n", __FILE__, __LINE__, 1);
     if (state.GetResult() != BlockValidationResult::BLOCK_MUTATED) {
         pindex->nStatus |= BLOCK_FAILED_VALID;
         m_blockman.m_failed_blocks.insert(pindex);
@@ -1443,7 +1426,6 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txund
     // add outputs
     // promserver
     TransactionsTXCacheSize.Set(inputs.GetCacheSize());
-    // LogPrintf("PROM %s::%d : TransactionsTXCacheSize SET -> (%s)\n", __FILE__, __LINE__, inputs.GetCacheSize());
     AddCoins(inputs, tx, nHeight);
 }
 
@@ -1592,7 +1574,6 @@ bool CheckInputScripts(const CTransaction& tx, TxValidationState &state, const C
     boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration diff = finish - start;
     CheckInputsMs.Set(diff.total_milliseconds());
-    // LogPrintf("PROM %s::%d : CheckInputsMs SET -> (%s)\n", __FILE__, __LINE__, diff.total_milliseconds());
 
     return true;
 }
@@ -1770,9 +1751,7 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
     boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration diff = finish - start;
     DisconnectBlockMs.Set(diff.total_milliseconds());
-    // LogPrintf("PROM %s::%d : DisconnectBlockMs SET -> (%s)\n", __FILE__, __LINE__, diff.total_milliseconds());
     TransactionsTXCacheSize.Set(view.GetCacheSize());
-    // LogPrintf("PROM %s::%d : TransactionsTXCacheSize SET -> (%s)\n", __FILE__, __LINE__, view.GetCacheSize());
 
     return fClean ? DISCONNECT_OK : DISCONNECT_UNCLEAN;
 }
@@ -2246,7 +2225,6 @@ bool CChainState::ConnectBlock(const CBlock& block, BlockValidationState& state,
     // add this block to the view's block chain
     // promserver
     TransactionsTXCacheSize.Increment(view.GetCacheSize());
-    // LogPrintf("PROM %s::%d : TransactionsTXCacheSize INC -> (%s)\n", __FILE__, __LINE__, view.GetCacheSize());
     view.SetBestBlock(pindex->GetBlockHash());
 
     int64_t nTime5 = GetTimeMicros(); nTimeIndex += nTime5 - nTime4;
@@ -2259,7 +2237,6 @@ bool CChainState::ConnectBlock(const CBlock& block, BlockValidationState& state,
     boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration diff = finish - start;
     ConnectBlockMs.Set(diff.total_milliseconds());
-    // LogPrintf("PROM %s::%d : ConnectBlockMs SET -> (%s)\n", __FILE__, __LINE__, diff.total_milliseconds());
 
     return true;
 }
@@ -2496,7 +2473,7 @@ static void UpdateTip(CTxMemPool& mempool, const CBlockIndex* pindexNew, const C
       FormatISO8601DateTime(pindexNew->GetBlockTime()),
       GuessVerificationProgress(chainParams.TxData(), pindexNew), ::ChainstateActive().CoinsTip().DynamicMemoryUsage() * (1.0 / (1<<20)), ::ChainstateActive().CoinsTip().GetCacheSize(),
       !warning_messages.empty() ? strprintf(" warning='%s'", warning_messages.original) : "");
-    //promserver
+    // promserver
     BlockHeight.Set(pindexNew->nHeight);
 }
 
@@ -2671,7 +2648,6 @@ bool CChainState::ConnectTip(BlockValidationState& state, const CChainParams& ch
     boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration diff = finish - start;
     ConnectTipMs.Set(diff.total_milliseconds());
-    // LogPrintf("PROM %s::%d : ConnectTipMs SET -> (%s)\n", __FILE__, __LINE__, diff.total_milliseconds());
     connectTrace.BlockConnected(pindexNew, std::move(pthisBlock));
     return true;
 }
@@ -2970,7 +2946,6 @@ bool CChainState::ActivateBestChain(BlockValidationState &state, const CChainPar
     boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration diff = finish - start;
     ActivateBestChainMs.Set(diff.total_milliseconds());
-    // LogPrintf("PROM %s::%d : ActivateBestChainMs SET -> (%s)\n", __FILE__, __LINE__, diff.total_milliseconds());
 
     // Write changes periodically to disk, after relay.
     if (!FlushStateToDisk(chainparams, state, FlushStateMode::PERIODIC)) {
@@ -3438,21 +3413,12 @@ bool CheckBlock(const CBlock& block, BlockValidationState& state, const Consensu
     boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration diff = finish - start;
     CheckBlockUs.Set(diff.total_microseconds());
-    // LogPrintf("PROM %s::%d : CheckBlockUs SET -> (%s)\n", __FILE__, __LINE__, diff.total_microseconds());
     BlockVersion.Set(block.nVersion);
-    // LogPrintf("PROM %s::%d : BlockVersion SET -> (%s)\n", __FILE__, __LINE__, block.nVersion);
     BlockNumTransactions.Set(block.vtx.size());
-    // LogPrintf("PROM %s::%d : BlockNumTransactions SET -> (%s)\n", __FILE__, __LINE__, block.vtx.size());
     BlockSigOps.Set(nSigOps);
-    // LogPrintf("PROM %s::%d : BlockSigOps SET -> (%s)\n", __FILE__, __LINE__, nSigOps);
     BlockSizeBytes.Set(::GetSerializeSize(block, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS));
-    // LogPrintf("PROM %s::%d : BlockSizeBytes SET -> (%s)\n", __FILE__, __LINE__, ::GetSerializeSize(block, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS));
     BlockSizeWitnessBytes.Set(::GetSerializeSize(block, PROTOCOL_VERSION));
-    // LogPrintf("PROM %s::%d : ActivateBlockSizeWitnessBytesBestChainMs SET -> (%s)\n", __FILE__, __LINE__, ::GetSerializeSize(block, PROTOCOL_VERSION));
     BlockWeight.Set(::GetBlockWeight(block));
-    // LogPrintf("PROM %s::%d : BlockWeight SET -> (%s)\n", __FILE__, __LINE__, ::GetBlockWeight(block));
-    // BlockHeight.Set(::ChainActive().Height());
-    // LogPrintf("PROM %s::%d : BlockHeight SET -> (%s)\n", __FILE__, __LINE__, ::ChainActive().Height());
 
     return true;
 }
@@ -3878,7 +3844,6 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, Block
     boost::posix_time::ptime finish = boost::posix_time::microsec_clock::local_time();
     boost::posix_time::time_duration diff = finish - start;
     ActivateBlockMs.Set(diff.total_microseconds());
-    // LogPrintf("PROM %s::%d : ActivateBlockMs SET -> (%s)\n", __FILE__, __LINE__, diff.total_microseconds());
 
     return true;
 }

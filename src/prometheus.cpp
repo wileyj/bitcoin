@@ -12,7 +12,7 @@
 #include <thread>
 #include <sys/param.h>
 #include <unistd.h>
-#include <prometheus.h>
+#include <prometheus.h> // promserver
 #include <mutex>
 /* push */
 // #include <prometheus/gateway.h>
