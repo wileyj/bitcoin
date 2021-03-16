@@ -95,21 +95,8 @@ echo ""
     --disable-shared \
     --with-pic \
     --enable-cxx \
-    CPPFLAGS="${PROM_CPPFLAGS} -static-libstdc++"
-
-# ./configure \
-#     --with-boost \
-#     --with-boost-thread \
-#     --enable-util-cli $OPTS \
-#     --disable-gui-tests \
-#     --enable-static \
-#     --disable-tests \
-#     --without-miniupnpc \
-#     --disable-shared \
-#     --with-pic \
-#     --enable-cxx \
-#     LDFLAGS="-lprometheus-cpp-pull -lprometheus-cpp-push -lprometheus-cpp-core -lcurl -lz -static-libstdc++" \
-#     CPPFLAGS="${PROM_CPPFLAGS} -static-libstdc++" 
+    CPPFLAGS="${PROM_CPPFLAGS}" \
+    LDFLAGS="-lprometheus-cpp-pull -lprometheus-cpp-push -lprometheus-cpp-core -lcurl -lz -static-libstdc++"
 check_exit $?
 
 echo ""

@@ -77,7 +77,8 @@ sh autogen.sh
     --disable-shared \
     --with-pic \
     --enable-cxx \
-    CPPFLAGS="${PROM_CPPFLAGS} -static-libstdc++"
+    CPPFLAGS="${PROM_CPPFLAGS} -static-libstdc++" \
+    LDFLAGS="-lprometheus-cpp-pull -lprometheus-cpp-push -lprometheus-cpp-core -lcurl -lz" \
 ```
 
 ```bash

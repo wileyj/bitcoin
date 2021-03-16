@@ -3,8 +3,6 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 DIST_SUBDIRS = secp256k1 univalue
-# promserver
-LIBTOOL_LDFLAGS = -lprometheus-cpp-pull -lprometheus-cpp-push -lprometheus-cpp-core -lcurl -lz
 AM_LDFLAGS = $(LIBTOOL_LDFLAGS) $(HARDENED_LDFLAGS) $(GPROF_LDFLAGS) $(SANITIZER_LDFLAGS)
 AM_CXXFLAGS = $(DEBUG_CXXFLAGS) $(HARDENED_CXXFLAGS) $(WARN_CXXFLAGS) $(NOWARN_CXXFLAGS) $(ERROR_CXXFLAGS) $(GPROF_CXXFLAGS) $(SANITIZER_CXXFLAGS)
 AM_CPPFLAGS = $(DEBUG_CPPFLAGS) $(HARDENED_CPPFLAGS)
