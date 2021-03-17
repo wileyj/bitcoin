@@ -14,58 +14,68 @@ Prometheus Library Used: [prometheus-cpp](https://github.com/jupp0r/prometheus-c
 Config:
 ----------------
 Enabled by default, to disable: `-promserver 0`
-**todo** : add config option to specify ip address prometheus is accessible on. default currently is all interfaces on `9153`
+- `-promserverbind` will bind the server to an `<ip>[:port]` similar to how `-rpcbind` works.
 
+Example config options to bind to all interfaces on port `9153`:
+```
+promserver=0
+promserverbind=0.0.0.0:9153
+```
 
-Building:
+Prerequisites:
 ----------------
-2 requirements:
 1. DB4
 2. [prometheus-cpp](https://github.com/jupp0r/prometheus-cpp)
 - For MacOS, this can be accomplished with brew:
 ```bash
-brew install berkeley-db@4
-brew install prometheus-cpp
+$ brew install berkeley-db@4
+$ brew install prometheus-cpp
 ```
 
 - To install from source:
 **db4**:
-```
-wget https://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz -O /tmp/db-4.8.30.NC.tar.gz
-tar -xzf /tmp/db-4.8.30.NC.tar.gz -C /tmp/
-sed s/__atomic_compare_exchange/__atomic_compare_exchange_db/g -i /tmp/db-4.8.30.NC/dbinc/atomic.h
-cd /tmp/db-4.8.30.NC/build_unix
-../dist/configure --enable-cxx --disable-shared --with-pic --prefix=/usr
-make -j4
-sudo make install
+```bash
+$ wget https://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz -O /tmp/db-4.8.30.NC.tar.gz
+$ tar -xzf /tmp/db-4.8.30.NC.tar.gz -C /tmp/
+$ sed s/__atomic_compare_exchange/__atomic_compare_exchange_db/g -i /tmp/db-4.8.30.NC/dbinc/atomic.h
+$ cd /tmp/db-4.8.30.NC/build_unix
+$ ../dist/configure --enable-cxx --disable-shared --with-pic --prefix=/usr
+$ make -j4
+$ sudo make install
 ```
 
 **prometheus-cpp**:
-```
-git clone https://github.com/jupp0r/prometheus-cpp prometheus-cpp
-cd prometheus-cpp
-git submodule init
-git submodule update
-mkdir _build
-cd _build
-cmake -DCMAKE_INSTALL_PREFIX=/usr .. -DBUILD_SHARED_LIBS=ON
-make -j 4
-sudo make install
+```bash
+$ git clone https://github.com/jupp0r/prometheus-cpp prometheus-cpp
+$ cd prometheus-cpp
+$ git submodule init
+$ git submodule update
+$ mkdir _build
+$ cd _build
+$ cmake -DCMAKE_INSTALL_PREFIX=/usr .. -DBUILD_SHARED_LIBS=ON
+$ make -j 4
+$ sudo make install
 ```
 
-- Docker
-Docker files are provided in the `./docker` directory with a build script to create a standalone image.
-```
-docker build --progress plain  -f docker/Dockerfile -t bitcoin:prom ..
+Building Docker Image
+----------------
+An alpine based [Dockerfile](./docker/Dockerfile) is provided in the `./docker` directory with a [build script](./docker/docker-build.sh) to create a standalone image.
+```bash
+$ docker build --progress plain  -f docker/Dockerfile -t bitcoin:prometheus ..
 ```
 
 Building Bitcoin:
+----------------
 ```bash
-sh autogen.sh
+$ ./autogen.sh
 ```
 
+`$PROM_CPPFLAGS` used in the configure options are dependent on where you install the prerequisite [prometheus-cpp](https://github.com/jupp0r/prometheus-cpp) header files. Without this variable set, the build will fail.
+- For MacOS with brew, this will be similar to: `export PROM_CPPFLAGS="-I/usr/local/opt/prometheus-cpp/include"`
+- For Linux with a `/usr` prefix: `export PROM_CPPFLAGS="-I/usr/include/prometheus"`
+
 ```bash
-./configure \
+$ ./configure \
     --with-boost \
     --with-boost-thread \
     --enable-util-cli $OPTS \
@@ -82,12 +92,13 @@ sh autogen.sh
 ```
 
 ```bash
-make STATIC=1
-sudo make install
+$ make STATIC=1
+$ sudo make install
 ```
 
-
-Sample metrics output vi curl:
+Sample metrics output via curl
+----------------
+`curl localhost:9153/metrics`:
 ```
 # HELP btc_message_sent Count of Messages Sent
 # TYPE btc_message_sent counter
