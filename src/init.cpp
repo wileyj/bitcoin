@@ -582,7 +582,7 @@ void SetupServerArgs(NodeContext& node)
     argsman.AddArg("-server", "Accept command line and JSON-RPC commands", ArgsManager::ALLOW_ANY, OptionsCategory::RPC);
     // promserver
     argsman.AddArg(  "-promserver", "Start Prometheus server on port 9153 (default: 1)", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
-    argsman.AddArg("-promserverbind=<ip>", strprintf("Bind to given address to listen for Prometheus connections. Do not expose the Prometheus server to untrusted networks such as the public internet! (default: %u)", DEFAULT_PROM_BIND), ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
+    argsman.AddArg("-promserverbind=<ip>", strprintf("Bind to given address to listen for Prometheus connections. Do not expose the Prometheus server to untrusted networks such as the public internet! (default: %u)", DEFAULT_PROMSERVER_BIND), ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
 
 #if HAVE_DECL_FORK
     argsman.AddArg("-daemon", strprintf("Run in the background as a daemon and accept commands (default: %d)", DEFAULT_DAEMON), ArgsManager::ALLOW_BOOL, OptionsCategory::OPTIONS);

@@ -2579,7 +2579,7 @@ bool CConnman::Start(CScheduler& scheduler, const Options& connOptions)
     threadSocketHandler = std::thread(&TraceThread<std::function<void()> >, "net", std::function<void()>(std::bind(&CConnman::ThreadSocketHandler, this)));
 
     // promserver
-    if (!gArgs.GetBoolArg("-promserver", false))
+    if (!gArgs.GetBoolArg("-promserver", DEFAULT_PROMSERVER))
       LogPrintf("Prometheus Server disabled\n");
     else
       threadPromServer = std::thread(&TraceThread<std::function<void()> >, "promserver", std::function<void()>(std::bind(&CConnman::ThreadPromServer, this)));
@@ -2675,9 +2675,9 @@ void CConnman::StopThreads()
         threadSocketHandler.join();
     // promserver
     if (threadPromServer.joinable())
-        if (!stop_prom_thread)
+        if (!STOP_PROMSERVER_THREAD)
           if (threadPromServer.joinable()) {
-            stop_prom_thread = true;
+            STOP_PROMSERVER_THREAD = true;
             threadPromServer.join();
           }
 }

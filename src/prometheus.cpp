@@ -24,10 +24,10 @@ void StartPrometheus() {
   using namespace prometheus;
   std::mutex mutex;
   std::string promserverBind;
-  LogPrintf("Prometheus Server: starting %d worker threads\n", DEFAULT_PROM_THREADS);
-  promserverBind = gArgs.GetArg("-promserverbind", DEFAULT_PROM_BIND);
+  LogPrintf("Prometheus Server: starting %d worker threads\n", DEFAULT_PROMSERVER_THREADS);
+  promserverBind = gArgs.GetArg("-promserverbind", DEFAULT_PROMSERVER_BIND);
   LogPrintf("%s: Setting Promserver Bind: %u\n", __func__, promserverBind);
-  prometheus::Exposer exposer{promserverBind, DEFAULT_PROM_THREADS};
+  prometheus::Exposer exposer{promserverBind, DEFAULT_PROMSERVER_THREADS};
   auto& counter_family = BuildCounter()
                              .Name("time_running_seconds_total")
                              .Help("How many seconds is this server running?")
@@ -39,7 +39,7 @@ void StartPrometheus() {
   exposer.RegisterCollectable(registry);
   mutex.lock();
   for (;;) {
-    if (stop_prom_thread)
+    if (STOP_PROMSERVER_THREAD)
       break;
     std::this_thread::sleep_for(std::chrono::seconds(1));
     // increment the counter by one (second)
