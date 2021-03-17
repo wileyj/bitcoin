@@ -163,7 +163,8 @@ struct COrphanTx {
 };
 
 /** Guards orphan transactions and extra txs for compact blocks */
-RecursiveMutex g_cs_orphans;
+// RecursiveMutex g_cs_orphans;
+
 /** Map from txid to orphan transaction record. Limited by
  *  -maxorphantx/DEFAULT_MAX_ORPHAN_TRANSACTIONS */
 std::map<uint256, COrphanTx> mapOrphanTransactions GUARDED_BY(g_cs_orphans);
