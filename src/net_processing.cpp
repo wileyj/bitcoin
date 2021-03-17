@@ -519,7 +519,7 @@ private:
 
 namespace {
     /** Number of nodes with fSyncStarted. */
-    int nSyncStarted GUARDED_BY(cs_main) = 0;
+    //int nSyncStarted GUARDED_BY(cs_main) = 0;
 
     /**
      * Sources of received blocks, saved to be able punish them when processing
@@ -564,7 +564,7 @@ namespace {
      * Memory used: 1.3 MB
      */
     std::unique_ptr<CRollingBloomFilter> recentRejects GUARDED_BY(cs_main);
-    uint256 hashRecentRejectsChainTip GUARDED_BY(cs_main);
+    //uint256 hashRecentRejectsChainTip GUARDED_BY(cs_main);
 
     /*
      * Filter for transactions that have been recently confirmed.
@@ -583,16 +583,16 @@ namespace {
     int nPreferredDownload GUARDED_BY(cs_main) = 0;
 
     /** Number of peers from which we're downloading blocks. */
-    int nPeersWithValidatedDownloads GUARDED_BY(cs_main) = 0;
+    //int nPeersWithValidatedDownloads GUARDED_BY(cs_main) = 0;
 
     /** Number of peers with wtxid relay. */
-    int g_wtxid_relay_peers GUARDED_BY(cs_main) = 0;
+    //int g_wtxid_relay_peers GUARDED_BY(cs_main) = 0;
 
     /** Number of outbound peers with m_chain_sync.m_protect. */
-    int g_outbound_peers_with_protect_from_disconnect GUARDED_BY(cs_main) = 0;
+    //int g_outbound_peers_with_protect_from_disconnect GUARDED_BY(cs_main) = 0;
 
     /** When our tip was last updated. */
-    std::atomic<int64_t> g_last_tip_update(0);
+    //std::atomic<int64_t> g_last_tip_update(0);
 
     /** Relay map (txid or wtxid -> CTransactionRef) */
     typedef std::map<uint256, CTransactionRef> MapRelay;
