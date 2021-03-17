@@ -11,12 +11,12 @@
 #include <prometheus/registry.h>
 
 
-static const int DEFAULT_PROMSERVER_THREADS=4;
-// static const int DEFAULT_PROM_WORKQUEUE=16;
-// static const int DEFAULT_PROM_SERVER_TIMEOUT=30;
-static const std::string DEFAULT_PROMSERVER_BIND="127.0.0.1:9153";
-static const bool DEFAULT_PROMSERVER = true;
-inline bool STOP_PROMSERVER_THREAD = false;
+static const int DEFAULT_PROM_THREADS=4;
+static const int DEFAULT_PROM_WORKQUEUE=16;
+static const int DEFAULT_PROM_SERVER_TIMEOUT=30;
+static const std::string DEFAULT_PROM_BIND="127.0.0.1:9153";
+static const int DEFAULT_PROM_SERVER=true;
+inline bool stop_prom_thread = false;
 
 
 void StartPrometheus();
