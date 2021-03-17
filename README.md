@@ -32,8 +32,7 @@ $ brew install berkeley-db@4
 $ brew install prometheus-cpp
 ```
 
-- To install from source:
-**db4**:
+**db4** source install:
 ```bash
 $ wget https://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz -O /tmp/db-4.8.30.NC.tar.gz
 $ tar -xzf /tmp/db-4.8.30.NC.tar.gz -C /tmp/
@@ -44,7 +43,7 @@ $ make -j4
 $ sudo make install
 ```
 
-**prometheus-cpp**:
+**prometheus-cpp** source install:
 ```bash
 $ git clone https://github.com/jupp0r/prometheus-cpp prometheus-cpp
 $ cd prometheus-cpp
@@ -61,7 +60,7 @@ Building Docker Image
 ----------------
 An alpine based [Dockerfile](./docker/Dockerfile) is provided in the `./docker` directory with a [build script](./docker/docker-build.sh) to create a standalone image.
 ```bash
-$ docker build --progress plain  -f docker/Dockerfile -t bitcoin:prometheus ..
+$ docker build --progress plain  -f docker/Dockerfile -t bitcoin:prometheus .
 ```
 
 Building Bitcoin:
