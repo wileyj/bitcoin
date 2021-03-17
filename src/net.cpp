@@ -1231,12 +1231,14 @@ void CConnman::DisconnectNodes()
 
 void CConnman::NotifyNumConnectionsChanged()
 {
+    LOCK(cs_vNodes);
     size_t vNodesSize;
     {
-        LOCK(cs_vNodes);
+        // LOCK(cs_vNodes);
         vNodesSize = vNodes.size();
     }
     if(vNodesSize != nPrevNodeCount) {
+        // LOCK(cs_vNodes);
         nPrevNodeCount = vNodesSize;
         if(clientInterface)
             clientInterface->NotifyNumConnectionsChanged(vNodesSize);
@@ -1259,6 +1261,8 @@ void CConnman::NotifyNumConnectionsChanged()
         mapSentBytesMsgStats[NET_MESSAGE_COMMAND_OTHER] = 0;
         for (CNode* pnode : vNodes)
         {
+            LOCK(pnode->cs_vRecv);
+            LOCK(pnode->cs_vSend);
             for (const mapMsgCmdSize::value_type &i : pnode->mapRecvBytesPerMsgCmd)
                 mapRecvBytesMsgStats[i.first] += i.second;
             for (const mapMsgCmdSize::value_type &i : pnode->mapSendBytesPerMsgCmd)
@@ -2579,7 +2583,7 @@ bool CConnman::Start(CScheduler& scheduler, const Options& connOptions)
     threadSocketHandler = std::thread(&TraceThread<std::function<void()> >, "net", std::function<void()>(std::bind(&CConnman::ThreadSocketHandler, this)));
 
     // promserver
-    if (!gArgs.GetBoolArg("-promserver", false))
+    if (!gArgs.GetBoolArg("-promserver", DEFAULT_PROMSERVER))
       LogPrintf("Prometheus Server disabled\n");
     else
       threadPromServer = std::thread(&TraceThread<std::function<void()> >, "promserver", std::function<void()>(std::bind(&CConnman::ThreadPromServer, this)));
@@ -2675,9 +2679,9 @@ void CConnman::StopThreads()
         threadSocketHandler.join();
     // promserver
     if (threadPromServer.joinable())
-        if (!stop_prom_thread)
+        if (!STOP_PROMSERVER_THREAD)
           if (threadPromServer.joinable()) {
-            stop_prom_thread = true;
+            STOP_PROMSERVER_THREAD = true;
             threadPromServer.join();
           }
 }
