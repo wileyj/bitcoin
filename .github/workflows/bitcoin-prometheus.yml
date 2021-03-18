@@ -9,8 +9,6 @@ on:
       - '**'
     tags-ignore:
       - '**'
-    paths-ignore:
-      - '**/README.md'
     paths:
       - Dockerfiles/Dockerfile
       - Dockerfiles/docker-build.sh
