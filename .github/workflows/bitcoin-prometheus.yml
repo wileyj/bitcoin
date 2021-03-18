@@ -2,7 +2,6 @@ name: bitcoin-prometheus
 env:
   DOCKERHUB_IMAGE: wileyj/bitcoin
   DOCKERFILE: Dockerfiles/Dockerfile
-
 on:
   push:
     branches:
@@ -20,7 +19,6 @@ on:
       - Dockerfiles/docker-build.sh
       - Dockerfiles/VERSION
       - .github/workflows/bitcoin-prometheus.yml
-
 jobs:
   buildx:
     name: Bitcoin Core Prometheus Build
