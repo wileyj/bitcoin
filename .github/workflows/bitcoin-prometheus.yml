@@ -42,7 +42,7 @@ jobs:
             BTC_VERSION=${{ env.BTC_VERSION }}
           push: true
           tags: |
-            ${{ env.DOCKERHUB_IMAGE }}:${{ env.BTC_VERSION} }${{ matrix.build }}
+            ${{ env.DOCKERHUB_IMAGE }}:${{ env.BTC_VERSION }}${{ matrix.build }}
 
 # jobs:
 #   build-publish:
