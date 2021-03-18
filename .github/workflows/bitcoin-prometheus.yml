@@ -27,10 +27,10 @@ jobs:
       - name: Set Vars
         run: |
           echo "BTC_VERSION=$(cat docker/VERSION)" >> $GITHUB_ENV
-          echo "MAJOR=$(grep \"define(_CLIENT_VERSION_MAJOR\" $FILE  | awk '{print $2}' | tr -d \))"
-          echo "MINOR=$(grep "define(_CLIENT_VERSION_MINOR" $FILE  | awk '{print $2}' | tr -d \))" >> $GITHUB_ENV
-          echo "BUILD=$(grep "define(_CLIENT_VERSION_BUILD" $FILE  | awk '{print $2}' | tr -d \))" >> $GITHUB_ENV
-          echo "RC=$(grep "define(_CLIENT_VERSION_RC" $FILE  | awk '{print $2}' | tr -d \))" >> $GITHUB_ENV
+          echo "MAJOR=$(grep "define(_CLIENT_VERSION_MAJOR" configure.ac | awk '{print $2}' | tr -d \))" >> $GITHUB_ENV
+          echo "MINOR=$(grep "define(_CLIENT_VERSION_MINOR" configure.ac | awk '{print $2}' | tr -d \))" >> $GITHUB_ENV
+          echo "BUILD=$(grep "define(_CLIENT_VERSION_BUILD" configure.ac | awk '{print $2}' | tr -d \))" >> $GITHUB_ENV
+          echo "RC=$(grep "define(_CLIENT_VERSION_RC" configure.ac  | awk '{print $2}' | tr -d \))" >> $GITHUB_ENV
       - name: Echo BTC Version
         run: |
           echo ${{env.BTC_VERSION}}
