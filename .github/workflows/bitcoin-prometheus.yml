@@ -7,10 +7,10 @@ on:
   push:
     branches:
       - '**'
+    tags-ignore:
+      - '**'
     paths-ignore:
       - '**/README.md'
-   tags-ignore:
-      - 'v**'
     paths:
       - Dockerfiles/Dockerfile
       - Dockerfiles/docker-build.sh
