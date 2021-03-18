@@ -19,15 +19,18 @@ jobs:
         run: |
           echo "BTC_VERSION=$(cat docker/VERSION)" >> $GITHUB_ENV
 
-      - name: Build/Tag/Push Image
-        uses: docker/build-push-action@v1
-        with:
-          file: ${{ env.DOCKERFILE }}
-          repository: ${{ env.DOCKERHUB_IMAGE }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
-          tags: ${{env.BTC_VERSION}}-prometheus
-          tag_with_ref: true
-          push: true
-          # Only push if (a tag was passed in) or (we're building a non-master branch which isn't a PR)
-          # push: ${{ github.event.inputs.tag != '' || (github.ref != 'refs/heads/master' && !contains(github.ref, 'refs/pull')) }}
+      - name: Echo BTC Version
+        run: echo ${{env.BTC_VERSION}}
+
+      # - name: Build/Tag/Push Image
+      #   uses: docker/build-push-action@v1
+      #   with:
+      #     file: ${{ env.DOCKERFILE }}
+      #     repository: ${{ env.DOCKERHUB_IMAGE }}
+      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      #     tags: ${{env.BTC_VERSION}}-prometheus
+      #     tag_with_ref: true
+      #     push: true
+      #     # Only push if (a tag was passed in) or (we're building a non-master branch which isn't a PR)
+      #     # push: ${{ github.event.inputs.tag != '' || (github.ref != 'refs/heads/master' && !contains(github.ref, 'refs/pull')) }}
