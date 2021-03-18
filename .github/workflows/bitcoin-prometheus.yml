@@ -13,7 +13,6 @@ on:
 jobs:
   buildx:
     name: Bitcoin Core Build
-    needs: setup
     runs-on: ubuntu-latest
     strategy:
       matrix:
