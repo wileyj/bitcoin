@@ -669,8 +669,9 @@ bool CNode::ReceiveMsgBytes(Span<const uint8_t> msg_bytes, bool& complete)
             assert(i != mapRecvBytesPerMsgCmd.end());
             i->second += result->m_raw_message_size;
             // promserver
-            auto& BandwidthMessageBytesReceived = bandwidth_message_bytes_received.Add( {{"name", std::string(result->m_command)}} );
             BandwidthMessageBytesReceived.Increment(result->m_raw_message_size);
+            auto& BandwidthMessageBytesReceivedName = bandwidth_message_bytes_received.Add( {{"name", std::string(result->m_command)}} );
+            BandwidthMessageBytesReceivedName.Increment(result->m_raw_message_size);
 
             // push the message to the process queue,
             vRecvMsg.push_back(std::move(*result));
@@ -3069,8 +3070,9 @@ void CConnman::PushMessage(CNode* pnode, CSerializedNetMsg&& msg)
     size_t nTotalSize = nMessageSize + serializedHeader.size();
 
     // promserver
-    auto& BandwidthMessageBytesSent = bandwidth_message_bytes_sent.Add( {{"name", SanitizeString(msg.m_type.c_str())}} );
     BandwidthMessageBytesSent.Increment(nTotalSize);
+    auto& BandwidthMessageBytesSentName = bandwidth_message_bytes_sent.Add( {{"name", SanitizeString(msg.m_type.c_str())}} );
+    BandwidthMessageBytesSentName.Increment(nTotalSize);
     auto& MessageSent = message_sent.Add( {{"name", SanitizeString(msg.m_type.c_str())}} );
     MessageSent.Increment();
 
