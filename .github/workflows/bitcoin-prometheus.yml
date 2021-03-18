@@ -8,7 +8,7 @@ on:
     branches:
       - '**'
     tags-ignore:
-      - '**'
+      - 'v**'
     paths:
       - Dockerfiles/Dockerfile
       - Dockerfiles/docker-build.sh
